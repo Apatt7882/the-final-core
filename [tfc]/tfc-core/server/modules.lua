@@ -189,5 +189,12 @@ local function getModules()
 end
 exports('GetModules', getModules)
 
--- Used by the console command in main.lua.
-TFC.Modules = { List = getModules }
+-- Used inside tfc-core (console command, lifecycle).
+TFC.Modules = {
+    List = getModules,
+    ---@param name string
+    IsReady = function(name)
+        local entry = modules[name]
+        return entry ~= nil and entry.state == 'ready'
+    end,
+}

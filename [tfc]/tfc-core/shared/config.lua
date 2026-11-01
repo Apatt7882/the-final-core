@@ -3,11 +3,24 @@
 
 ---@class TFCConfig
 TFC.Config = {
-    ---Maximum characters per player (phase 3). Hard cap is 10.
+    ---Maximum characters per player. Hard cap is 10.
     MaxCharacters = 10,
 
-    ---Seconds between batched saves of changed player data (phase 2).
+    ---Seconds between batched saves of changed characters.
     SaveInterval = 300,
+
+    ---Identifiers stored and linked to the user besides the license (the primary key).
+    ---None are required to join.
+    LinkedIdentifiers = { 'discord', 'fivem' },
+
+    ---Development only: with no multichar module running, load the player's first
+    ---character automatically (creating DevCharacter if they have none).
+    ---Set to false once tfc-multichar is installed.
+    AutoLoadCharacter = true,
+    DevCharacter = { firstname = 'Dev', lastname = 'Tester' },
+
+    ---Where characters with no saved position appear (LSIA arrivals).
+    DefaultSpawn = { x = -1037.74, y = -2737.84, z = 20.17, w = 327.0 },
 
     ---Accounts every character starts with (phase 4). Modules can register more.
     DefaultAccounts = {

@@ -17,7 +17,26 @@
 ---@field Await fun(name: string, ...: any): ... client only
 ---@field AwaitClient fun(target: integer, name: string, ...: any): ... server only
 
+---@class TFCPlayerData
+---@field source integer
+---@field userId integer
+---@field characterId integer
+---@field cid string 8-character public character id
+---@field slot integer
+---@field firstname string
+---@field lastname string
+---@field dob string|nil YYYY-MM-DD
+---@field sex 'm'|'f'|nil
+---@field metadata table
+
 ---@class TFC
+---@field PlayerData TFCPlayerData|nil client only
+---@field OnPlayerLoaded fun(fn: fun(data: TFCPlayerData)) client only
+---@field OnPlayerUnloaded fun(fn: fun()) client only
+---@field OnMetadataChanged fun(fn: fun(key: string, value: any)) client only
+---@field GetPlayer fun(src: integer|string): TFCPlayer|nil server only
+---@field GetPlayerByCid fun(cid: string): TFCPlayer|nil server only
+---@field GetPlayers fun(): integer[] server only: sources of loaded players
 ---@field Name string
 ---@field CoreResource string
 ---@field Resource string the resource this TFC object lives in

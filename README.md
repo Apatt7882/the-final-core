@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 1 (foundation)**. See the design doc for the full plan.
+Status: **phase 2 (players and data)**. Phase 1 (foundation) is done. See the design doc for the full plan.
 
 ## Layout
 
@@ -16,8 +16,13 @@ Status: **phase 1 (foundation)**. See the design doc for the full plan.
     fxmanifest.lua
     import.lua        -- other resources include this to get a TFC object
     shared/           -- TFC global, config, log, event bus
-    server/           -- module loader, server callbacks, admin command
-    client/           -- client callbacks
+    server/
+      adapter.lua     -- every GTA-specific server call (identifiers, peds, state bags)
+      db/             -- schema runner, users, characters
+      player/         -- player object, save queue, connect/load/drop lifecycle
+      lib/            -- callbacks + player proxies for other resources
+    client/           -- client callbacks, player data, adapter, spawn placement
+    sql/schema.sql    -- tables; created automatically on start
     types/            -- LuaLS type definitions (not loaded at runtime)
   tfc-example/        -- template module: copy it to start a new one
 ```
@@ -29,23 +34,29 @@ Status: **phase 1 (foundation)**. See the design doc for the full plan.
 
    ```cfg
    setr tfc_debug 1
+   ensure oxmysql
    ensure tfc-core
    ensure tfc-example
 
    add_ace group.admin command.tfc allow
    ```
 
-3. Restart the server.
+3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
 
-## Check that phase 1 works
+## Check that phase 2 works
 
 | Where | Do | Expect |
 | --- | --- | --- |
-| Server console | Start the server | `The Final Core v0.1.0 starting`, then `module example v0.1.0 ready` |
-| Server console | `tfc modules` | `ready example v0.1.0 (tfc-example)` |
-| In game, F8 | `/tfctest` | `pong for <your name> in N ms` |
-| In game | `/tfcscreen` | Server console prints your screen resolution |
-| Server console | `restart tfc-example` | `module example stopped`, then `ready` again |
+| Server console | Start the server | `The Final Core v0.2.0 starting`, `database ready`, `module example v0.2.0 ready` |
+| Join the server | Connect | Console: `<you> loaded Dev Tester (<cid>)` and `has loaded 1 time(s)`; you spawn at the airport |
+| In game | Walk somewhere, then `/tfcwhoami` | Console prints your cid, slot, joins and position |
+| In game | `/tfcsave` | `saved 1 character(s)` |
+| Reconnect | Quit and rejoin | `has loaded 2 time(s)` and you appear where you left |
+| Database | Look at `tfc_user_identifiers` | Your `discord` and `fivem` rows (if Discord was open / FiveM account linked) |
+| In game, F8 | `/tfctest`, then `/tfcscreen` | Phase 1 callbacks still work |
+
+While no `tfc-multichar` module exists, `Config.AutoLoadCharacter` loads your first character automatically
+(creating "Dev Tester" if you have none).
 
 ## Writing a module
 
@@ -86,7 +97,26 @@ local thing = TFC.Callback.Await('mymodule:getThing', 42)
 | `TFC.RegisterModule(def, onReady)` | server | Register a module |
 | `exports['tfc-core']:GetModule(name)` / `GetModules()` / `IsModuleReady(name)` / `GetVersion()` | server | Module registry |
 
-Core hooks: `moduleReady(name, resource)`, `moduleStopped(name, resource)`.
+### Players (phase 2)
+
+| Call | Side | Purpose |
+| --- | --- | --- |
+| `TFC.GetPlayer(src)` / `TFC.GetPlayerByCid(cid)` / `TFC.GetPlayers()` | server | Player object (proxy outside the core) / sources of loaded players |
+| `player:GetCid()`, `GetFullName()`, `GetSlot()`, `GetDob()`, `GetSex()`, `GetUserId()` | server | Character info |
+| `player:GetMetadata(key)` / `player:SetMetadata(key, value)` | server | Private, saved data; synced to the owning client |
+| `player:GetState(key)` / `player:SetState(key, value)` | server | Public, unsaved state bag `tfc:<key>` every client can read |
+| `player:GetPosition()` / `player:Save()` | server | Live position / save now |
+| `exports['tfc-core']:GetCharacters(src)` / `CreateCharacter(src, data)` / `LoadCharacter(src, id)` / `UnloadCharacter(src)` | server | Character API for tfc-multichar |
+| `TFC.PlayerData`, `TFC.OnPlayerLoaded(fn)`, `TFC.OnPlayerUnloaded(fn)`, `TFC.OnMetadataChanged(fn)` | client | Local player data |
+
+State bags on every loaded player: `tfc:loaded`, `tfc:cid`, `tfc:name`.
+
+Core hooks (server, `TFC.On`): `moduleReady(name, resource)`, `moduleStopped(name, resource)`, `databaseReady()`,
+`characterSelect(source, userId)`, `playerLoaded(source, cid)`, `playerUnloaded(source, cid)`,
+`metadataChanged(source, key, value, old)`.
+
+Saving: changed characters are saved in one transaction every `Config.SaveInterval` seconds (default 300),
+and always on character switch, disconnect, and txAdmin shutdown.
 
 ## Editor setup
 
