@@ -21,13 +21,6 @@ TFC.Config = {
 
     ---Where characters with no saved position appear (LSIA arrivals).
     DefaultSpawn = { x = -1037.74, y = -2737.84, z = 20.17, w = 327.0 },
-
-    ---Accounts every character starts with (phase 4). Modules can register more.
-    DefaultAccounts = {
-        cash = 500,
-        bank = 5000,
-        credit = 0,
-    },
 }
 
 -- Debug logging and callback timeouts are convars so every resource can read them:

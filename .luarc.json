@@ -6,6 +6,7 @@
     "diagnostics.globals": [
         "TFC",
         "MulticharConfig",
+        "AccountsConfig",
         "source",
         "exports",
         "Citizen",

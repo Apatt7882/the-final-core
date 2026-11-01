@@ -14,6 +14,11 @@ CreateThread(function()
     TriggerServerEvent('tfc:server:clientReady')
 end)
 
+-- Only tfc-core listens, so a notification never shows twice.
+TFC.OnNet('tfc:client:notify', function(data)
+    TFC.UI.Notify(data)
+end)
+
 TFC.OnNet('tfc:client:playerLoaded', function(data, spawn)
     CreateThread(function()
         -- If spawnmanager is running, wait for its spawn so it doesn't move us afterwards.

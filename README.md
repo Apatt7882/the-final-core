@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 3 (character select)**. Phases 1 (foundation) and 2 (players and data) are done. See the design doc for the full plan.
+Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, character select) are done. See the design doc for the full plan.
 
 ## Layout
 
@@ -24,7 +24,8 @@ Status: **phase 3 (character select)**. Phases 1 (foundation) and 2 (players and
     client/           -- client callbacks, player data, adapter, spawn placement
     sql/schema.sql    -- tables; created automatically on start
     types/            -- LuaLS type definitions (not loaded at runtime)
-  tfc-multichar/       -- character select + creation (custom NUI in html/)
+  tfc-multichar/      -- character select + creation (custom NUI in html/)
+  tfc-accounts/       -- cash, bank and credit; transaction log
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -36,33 +37,33 @@ Status: **phase 3 (character select)**. Phases 1 (foundation) and 2 (players and
    ```cfg
    setr tfc_debug 1
    ensure oxmysql
+   ensure ox_lib          # optional: nicer notifications; falls back to the GTA feed
    ensure tfc-core
    ensure tfc-multichar
+   ensure tfc-accounts
    ensure tfc-example
 
    add_ace group.admin command.tfc allow
+   add_ace group.admin command.givemoney allow
+   add_ace group.admin command.takemoney allow
    ```
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
 
-## Check that phase 3 works
-
-Preview the screen in any browser by opening `tfc-multichar/html/index.html` (it shows sample data).
+## Check that phase 4a works
 
 | Where | Do | Expect |
 | --- | --- | --- |
-| Server console | Start the server | `The Final Core v0.3.0 starting`, `module multichar v0.1.0 ready` |
-| Join | Connect | Camera over the city with the character list; Dev Tester is there from phase 2 |
-| Select screen | Play Dev Tester | Fade, then you spawn where you last saved |
-| In game | `/logout` | Back to the select screen |
-| Select screen | New character, fill the form, Create | New card appears and is selected |
-| Select screen | Try a date of birth under 18 | Error message, nothing created |
-| Select screen | Play the new character | Spawns at the airport (no saved position yet), as a female/male freemode ped |
-| Select screen | Delete a character, type its name | Deleted; the Delete button stays disabled until the name matches |
-| Reconnect | Quit and rejoin | Select screen again; both characters keep their own position and data |
+| Server console | Start the server | `The Final Core v0.4.0 starting`, `module accounts v0.1.0 ready` |
+| In game | Load any character, then `/money` | Notification: Cash $500, Bank $5,000, Credit $0 (new characters) |
+| Server console | `givemoney <your id> cash 250` | `<you> cash: now $750`, and an in-game notification |
+| Server console | `takemoney <your id> cash 99999` | `failed: not enough cash` |
+| Server console | `takemoney <your id> credit 2000` | Credit now -$2,000 |
+| In game | `/repaycredit` | Bank -$2,000, credit back to $0 |
+| Reconnect | Rejoin the same character | `/money` shows the same balances |
+| Database | `tfc_transactions` | One row per change with amount, balance after and reason |
 
-With `tfc-multichar` running, `Config.AutoLoadCharacter` is ignored automatically.
-The select camera is set in `tfc-multichar/config.lua` (`Scene`) if you want a different view.
+Phase 3 checks (character select) still apply: see the git history of this file.
 
 ## Writing a module
 
@@ -123,6 +124,24 @@ Core hooks (server, `TFC.On`): `moduleReady(name, resource)`, `moduleStopped(nam
 
 Phase 3 adds: `exports['tfc-core']:DeleteCharacter(src, id)` and `GetConfig(key)`, the server hook
 `characterDeleted(source, cid)`, and the client hook `playerSpawned(data)` (fires once the character is placed).
+
+### Accounts (phase 4a, `exports['tfc-accounts']`, server)
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `GetBalance(src, account)` / `GetBalances(src)` | number / table | `cash`, `bank`, `credit` |
+| `AddMoney(src, account, amount, reason)` / `RemoveMoney(...)` | ok, newBalanceOrError | Whole dollars only; never passes the account's min/max |
+| `Charge(src, amount, reason, order?)` | ok, accountUsedOrError | Tries `cash`, `bank`, `credit` in order (configurable) |
+| `Transfer(src, from, to, amount, reason)` | ok, newBalanceOrError | Between the player's own accounts |
+| `RepayCredit(src, amount?)` | ok, newBalanceOrError | Bank to credit; omit amount to repay everything |
+| `SetBalance(src, account, amount, reason)` | ok, newBalanceOrError | Admin use |
+| `RegisterAccount(name, { label, default, min, max })` | ok | Add an account type from another module |
+
+Client: `exports['tfc-accounts']:GetBalance(account)`, `GetBalances()`, hook `moneyChanged(account, balance, delta, reason)`.
+Server hook: `moneyChanged(source, account, balance, delta, reason)`.
+Money changes are written to the database immediately (not batched), one atomic UPDATE each.
+
+UI: `TFC.UI.Notify(data)` on the client, `TFC.UI.Notify(src, data)` on the server. Uses ox_lib if it's running.
 
 Saving: changed characters are saved in one transaction every `Config.SaveInterval` seconds (default 300),
 and always on character switch, disconnect, and txAdmin shutdown.

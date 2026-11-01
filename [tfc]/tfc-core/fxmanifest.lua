@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-core'
 author 'Andrew'
 description 'The Final Core - a modular, performance-first roleplay framework'
-version '0.3.0'
+version '0.4.0'
 
 dependency 'oxmysql'
 
@@ -19,6 +19,7 @@ shared_scripts {
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/lib/callback.lua',
+    'server/lib/ui.lua',
     'server/adapter.lua',
     'server/db/schema.lua',
     'server/db/users.lua',
@@ -33,6 +34,7 @@ server_scripts {
 client_scripts {
     'client/lib/callback.lua',
     'client/lib/player.lua',
+    'client/lib/ui.lua',
     'client/adapter.lua',
     'client/main.lua',
 }
@@ -46,4 +48,5 @@ files {
     'shared/lib/events.lua',
     'client/lib/callback.lua',
     'client/lib/player.lua',
+    'client/lib/ui.lua',
 }

@@ -4,6 +4,12 @@ exports('GetVersion', function()
     return TFC.Version
 end)
 
+---True once the core tables exist. Modules with their own tables wait for this
+---(or the databaseReady hook) before creating tables that reference tfc_characters.
+exports('IsDatabaseReady', function()
+    return TFC.DB.Ready
+end)
+
 ---Read a core config value, e.g. exports['tfc-core']:GetConfig('MaxCharacters')
 ---@param key string
 exports('GetConfig', function(key)

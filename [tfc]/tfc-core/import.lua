@@ -20,6 +20,7 @@ local files = {
     'shared/lib/events.lua',
     side .. '/lib/callback.lua',
     side .. '/lib/player.lua',
+    side .. '/lib/ui.lua',
 }
 
 for _, path in ipairs(files) do

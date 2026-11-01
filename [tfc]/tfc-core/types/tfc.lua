@@ -29,7 +29,17 @@
 ---@field sex 'm'|'f'|nil
 ---@field metadata table
 
+---@class TFCNotify
+---@field title? string
+---@field description? string
+---@field type? 'inform'|'success'|'error'|'warning'
+---@field duration? integer
+
+---@class TFCUI
+---@field Notify fun(srcOrData: integer|TFCNotify|string, data?: TFCNotify|string) client: Notify(data); server: Notify(src, data)
+
 ---@class TFC
+---@field UI TFCUI
 ---@field PlayerData TFCPlayerData|nil client only
 ---@field OnPlayerLoaded fun(fn: fun(data: TFCPlayerData)) client only
 ---@field OnPlayerUnloaded fun(fn: fun()) client only
