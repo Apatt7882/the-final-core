@@ -39,3 +39,11 @@ luac.out
 *.x86_64
 *.hex
 
+
+# The Final Core
+*.secret.lua
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+desktop.ini
+.DS_Store

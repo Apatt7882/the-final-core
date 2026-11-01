@@ -1,0 +1,18 @@
+{
+    "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+    "runtime.version": "Lua 5.4",
+    "workspace.library": ["[tfc]/tfc-core/types"],
+    "workspace.checkThirdParty": false,
+    "diagnostics.globals": [
+        "TFC",
+        "source",
+        "exports",
+        "Citizen",
+        "promise",
+        "json",
+        "vector2",
+        "vector3",
+        "vector4",
+        "quat"
+    ]
+}
