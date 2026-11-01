@@ -26,6 +26,7 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
     types/            -- LuaLS type definitions (not loaded at runtime)
   tfc-multichar/      -- character select + creation (custom NUI in html/)
   tfc-accounts/       -- cash, bank and credit; transaction log
+  tfc-hud/            -- date/time, money, job and location HUD (NUI)
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -41,6 +42,7 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
    ensure tfc-core
    ensure tfc-multichar
    ensure tfc-accounts
+   ensure tfc-hud
    ensure tfc-example
 
    add_ace group.admin command.tfc allow
@@ -62,6 +64,20 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
 | In game | `/repaycredit` | Bank -$2,000, credit back to $0 |
 | Reconnect | Rejoin the same character | `/money` shows the same balances |
 | Database | `tfc_transactions` | One row per change with amount, balance after and reason |
+
+**HUD** (open `tfc-hud/html/index.html` in a browser to preview it):
+
+| Where | Do | Expect |
+| --- | --- | --- |
+| In game | Load a character | Time/date, cash, bank and "Unemployed" top right; street and area beside the minimap |
+| Server console | `givemoney <your id> cash 250` | Cash flashes green with "+$250" beside it |
+| In game | Drive around | Compass, street and area update as you move |
+| In game | Open the pause menu, then `/hud` | HUD hides in the menu; `/hud` toggles it |
+| Server console | `takemoney <your id> credit 500` | A red credit row appears (only shown while you owe) |
+
+Settings (`tfc-hud/config.lua`): in-game vs real time, 12/24 hour, credit row, location on/off, toggle command.
+The job line reads the `tfc:job` state bag that `tfc-jobs` (phase 4b) will set:
+`{ label = 'Police', gradeLabel = 'Sergeant', onDuty = true }`.
 
 Phase 3 checks (character select) still apply: see the git history of this file.
 

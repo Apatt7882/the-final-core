@@ -7,6 +7,7 @@
         "TFC",
         "MulticharConfig",
         "AccountsConfig",
+        "HudConfig",
         "source",
         "exports",
         "Citizen",
