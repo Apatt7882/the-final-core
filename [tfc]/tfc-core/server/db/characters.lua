@@ -83,6 +83,14 @@ function TFC.Characters.Insert(userId, slot, data)
     ]], { generateCid(), userId, slot, data.firstname, data.lastname, data.dob or '', data.sex or '' })
 end
 
+---Permanently delete a character. Rows in other tfc_ tables that reference it
+---should use ON DELETE CASCADE.
+---@param charId integer
+---@return boolean deleted
+function TFC.Characters.Delete(charId)
+    return (MySQL.update.await('DELETE FROM tfc_characters WHERE id = ?', { charId }) or 0) > 0
+end
+
 ---Build the save query for one character (used for batched transactions).
 ---@param charId integer
 ---@param metadata table

@@ -4,6 +4,15 @@ exports('GetVersion', function()
     return TFC.Version
 end)
 
+---Read a core config value, e.g. exports['tfc-core']:GetConfig('MaxCharacters')
+---@param key string
+exports('GetConfig', function(key)
+    if key == 'MaxCharacters' then
+        return math.min(TFC.Config.MaxCharacters, 10)
+    end
+    return TFC.Config[key]
+end)
+
 local function printModules()
     local list = TFC.Modules.List()
     if #list == 0 then

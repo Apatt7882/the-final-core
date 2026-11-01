@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-core'
 author 'Andrew'
 description 'The Final Core - a modular, performance-first roleplay framework'
-version '0.2.0'
+version '0.3.0'
 
 dependency 'oxmysql'
 

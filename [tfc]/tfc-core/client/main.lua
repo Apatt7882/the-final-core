@@ -29,5 +29,8 @@ TFC.OnNet('tfc:client:playerLoaded', function(data, spawn)
         end
 
         TFC.Log.Info('playing as %s %s (%s)', data.firstname, data.lastname, data.cid)
+
+        -- Client hook for every resource: the character is in the world at their position.
+        TFC.Emit('playerSpawned', data)
     end)
 end)

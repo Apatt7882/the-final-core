@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Character Select</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main id="app" class="hidden" aria-live="polite">
+        <section class="panel">
+            <header class="panel-head">
+                <p class="brand">The Final Core</p>
+                <h1>Choose your character</h1>
+                <p class="slots" id="slots"></p>
+            </header>
+
+            <div class="error hidden" id="error" role="alert"></div>
+
+            <ul class="list" id="list"></ul>
+
+            <footer class="panel-foot">
+                <button class="btn btn-primary" id="play" disabled>Play</button>
+                <button class="btn btn-ghost" id="delete" disabled>Delete</button>
+            </footer>
+        </section>
+    </main>
+
+    <!-- Create character -->
+    <div class="modal hidden" id="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+        <form class="card" id="create-form" novalidate>
+            <h2 id="create-title">New character</h2>
+            <div class="row">
+                <label>First name
+                    <input name="firstname" maxlength="32" autocomplete="off" required>
+                </label>
+                <label>Last name
+                    <input name="lastname" maxlength="32" autocomplete="off" required>
+                </label>
+            </div>
+            <label>Date of birth
+                <input name="dob" type="date" min="1900-01-01" required>
+            </label>
+            <fieldset class="sex">
+                <legend>Sex</legend>
+                <label class="choice"><input type="radio" name="sex" value="m" checked><span>Male</span></label>
+                <label class="choice"><input type="radio" name="sex" value="f"><span>Female</span></label>
+            </fieldset>
+            <p class="form-error hidden" id="create-error" role="alert"></p>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-primary" id="create-submit">Create</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Delete character -->
+    <div class="modal hidden" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+        <form class="card" id="delete-form" novalidate>
+            <h2 id="delete-title">Delete character</h2>
+            <p class="muted">This permanently deletes <strong id="delete-name"></strong> and everything they own. It cannot be undone.</p>
+            <label>Type the full name to confirm
+                <input name="confirm" autocomplete="off" id="delete-input">
+            </label>
+            <p class="form-error hidden" id="delete-error" role="alert"></p>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-danger" id="delete-submit" disabled>Delete forever</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@
     "workspace.checkThirdParty": false,
     "diagnostics.globals": [
         "TFC",
+        "MulticharConfig",
         "source",
         "exports",
         "Citizen",

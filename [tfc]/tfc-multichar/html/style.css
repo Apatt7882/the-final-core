@@ -1,0 +1,274 @@
+:root {
+    --bg: rgba(12, 14, 18, 0.94);
+    --surface: rgba(255, 255, 255, 0.05);
+    --surface-hover: rgba(255, 255, 255, 0.09);
+    --border: rgba(255, 255, 255, 0.10);
+    --text: #f2f3f5;
+    --muted: #9aa1ab;
+    --accent: #e8a33d;
+    --accent-ink: #1a1206;
+    --danger: #e5484d;
+    --radius: 10px;
+    font-family: "Segoe UI", Inter, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: transparent;
+    color: var(--text);
+    overflow: hidden;
+    user-select: none;
+}
+
+.hidden { display: none !important; }
+
+/* Panel ------------------------------------------------------------------ */
+
+#app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    background: linear-gradient(90deg, rgba(8, 9, 12, 0.85) 0%, rgba(8, 9, 12, 0.55) 34%, transparent 60%);
+}
+
+.panel {
+    width: 440px;
+    max-width: 100%;
+    height: 100%;
+    padding: 56px 40px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.brand {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+h1 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.15;
+}
+
+.slots {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.list::-webkit-scrollbar { width: 6px; }
+.list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.char {
+    width: 100%;
+    text-align: left;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 2px 14px;
+    align-items: center;
+    transition: background 120ms, border-color 120ms;
+}
+
+.char:hover { background: var(--surface-hover); }
+
+.char[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: rgba(232, 163, 61, 0.10);
+}
+
+.avatar {
+    grid-row: span 2;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.char[aria-pressed="true"] .avatar {
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+
+.name { font-size: 16px; font-weight: 600; }
+.meta { font-size: 13px; color: var(--muted); }
+
+.new {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px dashed rgba(255, 255, 255, 0.22);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms;
+}
+
+.new:hover { color: var(--text); border-color: var(--accent); }
+
+.panel-foot {
+    display: flex;
+    gap: 10px;
+}
+
+.panel-foot .btn-primary { flex: 1; }
+
+/* Buttons ---------------------------------------------------------------- */
+
+.btn {
+    height: 44px;
+    padding: 0 18px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 120ms, opacity 120ms;
+}
+
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn:not(:disabled):hover { filter: brightness(1.1); }
+
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+
+/* Messages --------------------------------------------------------------- */
+
+.error {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    background: rgba(229, 72, 77, 0.14);
+    border: 1px solid rgba(229, 72, 77, 0.4);
+    font-size: 14px;
+}
+
+.form-error { margin: 0; color: #ff8a8e; font-size: 14px; }
+.muted { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+
+/* Modals ----------------------------------------------------------------- */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.card {
+    width: 440px;
+    max-width: calc(100% - 32px);
+    padding: 28px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.card h2 { margin: 0; font-size: 20px; font-weight: 600; }
+
+.row { display: flex; gap: 12px; }
+.row label { flex: 1; min-width: 0; }
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+input:not([type="radio"]) {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    color-scheme: dark;
+}
+
+input:focus { outline: none; border-color: var(--accent); }
+
+.sex {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 10px;
+}
+
+.sex legend { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+.choice {
+    flex: 1;
+    cursor: pointer;
+}
+
+.choice input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.choice span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    transition: border-color 120ms, background 120ms;
+}
+
+.choice input:checked + span {
+    border-color: var(--accent);
+    background: rgba(232, 163, 61, 0.10);
+}
+
+.choice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }

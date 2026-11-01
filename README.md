@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 2 (players and data)**. Phase 1 (foundation) is done. See the design doc for the full plan.
+Status: **phase 3 (character select)**. Phases 1 (foundation) and 2 (players and data) are done. See the design doc for the full plan.
 
 ## Layout
 
@@ -24,6 +24,7 @@ Status: **phase 2 (players and data)**. Phase 1 (foundation) is done. See the de
     client/           -- client callbacks, player data, adapter, spawn placement
     sql/schema.sql    -- tables; created automatically on start
     types/            -- LuaLS type definitions (not loaded at runtime)
+  tfc-multichar/       -- character select + creation (custom NUI in html/)
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -36,6 +37,7 @@ Status: **phase 2 (players and data)**. Phase 1 (foundation) is done. See the de
    setr tfc_debug 1
    ensure oxmysql
    ensure tfc-core
+   ensure tfc-multichar
    ensure tfc-example
 
    add_ace group.admin command.tfc allow
@@ -43,20 +45,24 @@ Status: **phase 2 (players and data)**. Phase 1 (foundation) is done. See the de
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
 
-## Check that phase 2 works
+## Check that phase 3 works
+
+Preview the screen in any browser by opening `tfc-multichar/html/index.html` (it shows sample data).
 
 | Where | Do | Expect |
 | --- | --- | --- |
-| Server console | Start the server | `The Final Core v0.2.0 starting`, `database ready`, `module example v0.2.0 ready` |
-| Join the server | Connect | Console: `<you> loaded Dev Tester (<cid>)` and `has loaded 1 time(s)`; you spawn at the airport |
-| In game | Walk somewhere, then `/tfcwhoami` | Console prints your cid, slot, joins and position |
-| In game | `/tfcsave` | `saved 1 character(s)` |
-| Reconnect | Quit and rejoin | `has loaded 2 time(s)` and you appear where you left |
-| Database | Look at `tfc_user_identifiers` | Your `discord` and `fivem` rows (if Discord was open / FiveM account linked) |
-| In game, F8 | `/tfctest`, then `/tfcscreen` | Phase 1 callbacks still work |
+| Server console | Start the server | `The Final Core v0.3.0 starting`, `module multichar v0.1.0 ready` |
+| Join | Connect | Camera over the city with the character list; Dev Tester is there from phase 2 |
+| Select screen | Play Dev Tester | Fade, then you spawn where you last saved |
+| In game | `/logout` | Back to the select screen |
+| Select screen | New character, fill the form, Create | New card appears and is selected |
+| Select screen | Try a date of birth under 18 | Error message, nothing created |
+| Select screen | Play the new character | Spawns at the airport (no saved position yet), as a female/male freemode ped |
+| Select screen | Delete a character, type its name | Deleted; the Delete button stays disabled until the name matches |
+| Reconnect | Quit and rejoin | Select screen again; both characters keep their own position and data |
 
-While no `tfc-multichar` module exists, `Config.AutoLoadCharacter` loads your first character automatically
-(creating "Dev Tester" if you have none).
+With `tfc-multichar` running, `Config.AutoLoadCharacter` is ignored automatically.
+The select camera is set in `tfc-multichar/config.lua` (`Scene`) if you want a different view.
 
 ## Writing a module
 
@@ -114,6 +120,9 @@ State bags on every loaded player: `tfc:loaded`, `tfc:cid`, `tfc:name`.
 Core hooks (server, `TFC.On`): `moduleReady(name, resource)`, `moduleStopped(name, resource)`, `databaseReady()`,
 `characterSelect(source, userId)`, `playerLoaded(source, cid)`, `playerUnloaded(source, cid)`,
 `metadataChanged(source, key, value, old)`.
+
+Phase 3 adds: `exports['tfc-core']:DeleteCharacter(src, id)` and `GetConfig(key)`, the server hook
+`characterDeleted(source, cid)`, and the client hook `playerSpawned(data)` (fires once the character is placed).
 
 Saving: changed characters are saved in one transaction every `Config.SaveInterval` seconds (default 300),
 and always on character switch, disconnect, and txAdmin shutdown.

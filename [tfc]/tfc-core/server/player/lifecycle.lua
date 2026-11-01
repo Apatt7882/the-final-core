@@ -94,6 +94,36 @@ function TFC.CreateCharacter(src, data)
     return charId
 end
 
+---Permanently delete one of this player's characters (not the one currently loaded).
+---Emits characterDeleted(source, cid).
+---@param src integer
+---@param charId integer
+---@return boolean ok
+---@return string|nil err
+function TFC.DeleteCharacter(src, charId)
+    src = tonumber(src) --[[@as integer]]
+    local session = sessions[src]
+    if not session then return false, 'player has no session' end
+
+    local character = TFC.Characters.Get(tonumber(charId))
+    if not character or character.user_id ~= session.id then
+        return false, 'character not found'
+    end
+
+    local loaded = TFC.GetPlayer(src)
+    if loaded and loaded.character.id == character.id then
+        return false, 'cannot delete the character you are playing'
+    end
+
+    if not TFC.Characters.Delete(character.id) then
+        return false, 'delete failed'
+    end
+
+    TFC.Log.Info('player %d deleted character %s %s (%s)', src, character.firstname, character.lastname, character.cid)
+    TFC.Emit('characterDeleted', src, character.cid)
+    return true
+end
+
 ---Save and remove the loaded character.
 ---@param src integer
 ---@param opts? { dropped?: boolean }
@@ -238,6 +268,7 @@ end)
 exports('GetCharacters', TFC.GetCharacters)
 exports('CreateCharacter', TFC.CreateCharacter)
 exports('LoadCharacter', TFC.LoadCharacter)
+exports('DeleteCharacter', TFC.DeleteCharacter)
 exports('UnloadCharacter', function(src) return TFC.UnloadCharacter(src) end)
 
 ---@param src integer
