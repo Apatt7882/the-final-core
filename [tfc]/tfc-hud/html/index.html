@@ -47,18 +47,22 @@
             </div>
         </section>
 
-        <!-- Bottom left, beside the minimap: location -->
-        <section class="location" id="location" aria-label="Location">
-            <span class="compass" id="dir">N</span>
-            <span class="postal hidden" id="postal-box">
-                <span class="postal-label">Postal</span>
-                <span class="postal-code" id="postal">000</span>
-            </span>
-            <span class="place">
-                <span class="street" id="street"></span>
-                <span class="zone" id="zone"></span>
-            </span>
-        </section>
+        <!-- Bottom left, beside the minimap: who's on, then location -->
+        <div class="corner" id="corner">
+            <section class="counts hidden" id="counts" aria-label="Who's on"></section>
+
+            <section class="location" id="location" aria-label="Location">
+                <span class="compass" id="dir">N</span>
+                <span class="postal hidden" id="postal-box">
+                    <span class="postal-label">Postal</span>
+                    <span class="postal-code" id="postal">000</span>
+                </span>
+                <span class="place">
+                    <span class="street" id="street"></span>
+                    <span class="zone" id="zone"></span>
+                </span>
+            </section>
+        </div>
     </div>
 
     <script src="app.js"></script>

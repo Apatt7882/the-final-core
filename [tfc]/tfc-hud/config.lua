@@ -24,6 +24,20 @@ HudConfig = {
         ArriveDistance = 50.0,
     },
 
+    ---Who's on: a box above the location showing staff online and how many of each service
+    ---are on duty. Counted on the server every `Interval` seconds.
+    Counts = {
+        Enabled = true,
+        Interval = 5,
+        ---Staff = connected players with any of these permissions (ACE).
+        Staff = { 'tfc.admin', 'tfc.mod' },
+        ---Each group counts on-duty players in these jobs. Icons: 'leo', 'ems', 'fire', 'staff'.
+        Groups = {
+            { key = 'leo', label = 'LEO', icon = 'leo', jobs = { 'police' } },
+            { key = 'ems', label = 'EMS', icon = 'ems', jobs = { 'ambulance' } },
+        },
+    },
+
     ---Chat command that toggles the HUD for this player. Set to false to disable.
     ToggleCommand = 'hud',
 

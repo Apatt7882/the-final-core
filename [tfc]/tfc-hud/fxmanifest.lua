@@ -4,8 +4,8 @@ lua54 'yes'
 
 name 'tfc-hud'
 author 'Andrew'
-description 'The Final Core - HUD: date/time, money, job and location'
-version '0.2.0'
+description 'The Final Core - HUD: date/time, money, job, location and who's on'
+version '0.3.0'
 
 dependency 'tfc-core'
 
@@ -13,6 +13,7 @@ shared_scripts {
     '@tfc-core/import.lua',
     'config.lua',
 }
+server_script 'server.lua'
 client_script 'client.lua'
 
 ui_page 'html/index.html'

@@ -158,11 +158,18 @@ html, body {
 
 /* Location (beside the minimap) ---------------------------------------------------- */
 
-.location {
+.corner {
     position: fixed;
     /* left/bottom are set from the real minimap position by app.js */
     left: 20vw;
     bottom: 3vh;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(8 * var(--u));
+}
+
+.location {
     display: flex;
     align-items: center;
     gap: calc(12 * var(--u));
@@ -233,3 +240,57 @@ html, body {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
+
+/* Who's on (above the location) ---------------------------------------------------- */
+
+.counts {
+    display: flex;
+    align-items: center;
+    gap: calc(4 * var(--u));
+    padding: calc(5 * var(--u));
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: calc(10 * var(--u));
+}
+
+.count {
+    display: flex;
+    align-items: center;
+    gap: calc(7 * var(--u));
+    padding: calc(5 * var(--u)) calc(10 * var(--u)) calc(5 * var(--u)) calc(7 * var(--u));
+    border-radius: calc(7 * var(--u));
+}
+
+.count + .count { border-left: 1px solid var(--border); border-radius: 0 calc(7 * var(--u)) calc(7 * var(--u)) 0; }
+
+.count svg {
+    width: calc(18 * var(--u));
+    height: calc(18 * var(--u));
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.count .n {
+    font-size: calc(17 * var(--u));
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: calc(10 * var(--u));
+}
+
+.count .l {
+    font-size: calc(11 * var(--u));
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.count.staff { color: var(--accent); }
+.count.leo { color: #5b9cf5; }
+.count.ems { color: #e5484d; }
+.count.fire { color: #f97316; }
+.count.zero { color: #6b7280; }
+.count.zero .n { color: var(--muted); }

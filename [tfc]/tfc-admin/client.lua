@@ -182,10 +182,27 @@ end)
 
 -- Menu -------------------------------------------------------------------------------------------------
 
-local function openMenu(tab)
-    if menuOpen or not AdminClient.isAdmin() then return end
-    local r = TFC.Callback.Await('admin:data') or NO_RESPONSE
-    if not r.ok then return notify(r.error, 'error') end
+---@param tab string 'players' | 'items'
+---@param explicit boolean true when asked for by command (show errors); false for the key
+local function openMenu(tab, explicit)
+    if menuOpen then
+        -- Pressing the key again closes it (and un-sticks a menu that never finished opening).
+        menuOpen = false
+        SetNuiFocus(false, false)
+        SendNUIMessage({ action = 'close' })
+        return
+    end
+
+    -- The server decides who is an admin; the client flag is only a hint, so never rely on it here.
+    local r = TFC.Callback.Await('admin:data')
+    if not r then
+        print('^1[tfc-admin] no answer from the server for admin:data (is tfc-admin started on the server?)^7')
+        return notify('No response from the server.', 'error')
+    end
+    if not r.ok then
+        if explicit then notify(r.error, 'error') end
+        return
+    end
     menuOpen = true
     SetNuiFocus(true, true)
     SendNUIMessage({ action = 'open', tab = tab or 'players', data = r, imagePath = IMAGE_PATH })
@@ -198,9 +215,9 @@ local function closeMenu()
     SendNUIMessage({ action = 'close' })
 end
 
-TFC.OnNet('tfc-admin:client:openMenu', openMenu)
+TFC.OnNet('tfc-admin:client:openMenu', function(tab) openMenu(tab, true) end)
 
-RegisterCommand('tfc_admin', function() openMenu('players') end, false)
+RegisterCommand('tfc_admin', function() openMenu('players', false) end, false)
 RegisterKeyMapping('tfc_admin', 'Admin menu (admins only)', 'keyboard', Cfg.MenuKey)
 
 RegisterNUICallback('close', function(_, cb)

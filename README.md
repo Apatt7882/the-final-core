@@ -26,7 +26,7 @@ Status: **phase 7 (police, EMS, admin tools)**. Phases 1-4 are done; phase 5 (ES
     types/            -- LuaLS type definitions (not loaded at runtime)
   tfc-multichar/      -- character select + creation (custom NUI in html/)
   tfc-accounts/       -- cash, bank and credit; transaction log
-  tfc-hud/            -- date/time, money, job and location HUD (NUI)
+  tfc-hud/            -- date/time, money, job, location and who's-on HUD (NUI)
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
   tfc-shops/          -- stores, dealers, armories; buy/sell, stock, admin shop manager (NUI)
@@ -125,6 +125,9 @@ Every fine, jail and early release is in `tfc_police_records`.
 | `/items` | Item browser: every item with its picture, search and categories; give any amount to yourself or a player |
 | Spectate (menu or `/spectate id`) | Watch them; Backspace or `/spectate` to come back to where you were |
 | `/tpm`, `/tp x y [z]`, `/goto id`, `/bring id`, `/back` | Teleports; `/back` returns to where you were before the last one |
+
+**HUD who's-on box**: above the location, *Staff* (online with `tfc.admin` or `tfc.mod`), *LEO* and *EMS* (on duty).
+Updates every 5 s. Groups and jobs are set in `tfc-hud/config.lua` (`Counts`); a `fire` icon is ready for later.
 
 Hospital, jail and release positions are in the configs; adjust them if one is slightly off on your map.
 

@@ -92,10 +92,34 @@ function setLocation(loc) {
     $('zone').textContent = loc.zone || '';
 }
 
+// Who's on: [{ key, label, icon, count }]
+const COUNT_ICONS = {
+    staff: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/>',
+    leo: '<path d="M12 2.8 14.6 8l5.7.8-4.1 4 1 5.7L12 15.8l-5.2 2.7 1-5.7-4.1-4 5.7-.8z"/>',
+    ems: '<path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"/>',
+    fire: '<path d="M12 21c3.6 0 6-2.5 6-6 0-3.7-3-6-3.5-9.5C12.5 7 10 9.5 10 12c-1-.5-1.8-1.6-2-3-1.3 1.5-2 3.6-2 6 0 3.5 2.4 6 6 6z"/>',
+};
+
+function setCounts(list) {
+    const box = $('counts');
+    if (!Array.isArray(list) || list.length === 0) {
+        box.classList.add('hidden');
+        return;
+    }
+    box.innerHTML = list.map((c) => {
+        const icon = COUNT_ICONS[c.icon] || COUNT_ICONS[c.key] || COUNT_ICONS.staff;
+        const n = Number(c.count) || 0;
+        return `<span class="count ${String(c.key).replace(/[^a-z0-9_-]/gi, '')}${n === 0 ? ' zero' : ''}" title="${String(c.label)}">
+            <svg viewBox="0 0 24 24">${icon}</svg><span class="n">${n}</span><span class="l">${String(c.label).replace(/[<>&]/g, '')}</span>
+        </span>`;
+    }).join('');
+    box.classList.remove('hidden');
+}
+
 function setAnchor(a) {
     // a.* are 0-1 fractions of the screen; place the location just right of the minimap,
     // vertically centred on its lower half.
-    const el = $('location');
+    const el = $('corner');
     el.style.left = `calc(${(a.right * 100).toFixed(3)}vw + 1.2vh)`;
     el.style.bottom = `${((1 - a.bottom) * 100).toFixed(3)}vh`;
 }
@@ -110,6 +134,7 @@ const setters = {
     time: (v) => { if (config.timeSource === 'game') renderTime(v); },
     location: setLocation,
     anchor: setAnchor,
+    counts: setCounts,
     postal: (code) => {
         $('postal-box').classList.toggle('hidden', !config.showPostal || !code);
         if (code) $('postal').textContent = code;
@@ -166,6 +191,11 @@ if (!IN_GAME) {
     post({ action: 'set', field: 'job', value: { label: 'Police', grade: 'Sergeant', onDuty: true } });
     post({ action: 'set', field: 'location', value: { dir: 'NW', street: 'Vinewood Blvd', cross: 'Las Lagunas Blvd', zone: 'Downtown Vinewood' } });
     post({ action: 'set', field: 'postal', value: '7041' });
+    post({ action: 'set', field: 'counts', value: [
+        { key: 'staff', label: 'Staff', icon: 'staff', count: 2 },
+        { key: 'leo', label: 'LEO', icon: 'leo', count: 4 },
+        { key: 'ems', label: 'EMS', icon: 'ems', count: 0 },
+    ] });
     post({ action: 'visible', value: true });
     setTimeout(() => post({ action: 'money', account: 'cash', value: 1500, delta: 250 }), 400);
 }

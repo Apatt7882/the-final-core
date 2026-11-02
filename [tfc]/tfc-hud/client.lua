@@ -214,6 +214,21 @@ AddStateBagChangeHandler('tfc:job', nil, function(bagName, _, value)
     sendJob(value)
 end)
 
+-- Who's on (staff online, LEO / EMS on duty), counted by server.lua ---------------------
+
+local countsOn = HudConfig.Counts and HudConfig.Counts.Enabled
+
+local function sendCounts(list)
+    if not countsOn then return end
+    SendNUIMessage({ action = 'set', field = 'counts', value = type(list) == 'table' and list or {} })
+end
+
+if countsOn then
+    AddStateBagChangeHandler('tfc:counts', 'global', function(_, _, value)
+        sendCounts(value)
+    end)
+end
+
 -- Lifecycle --------------------------------------------------------------------------
 
 local function addSuggestions()
@@ -245,6 +260,7 @@ TFC.OnPlayerLoaded(function()
         sendMoney(exports['tfc-accounts']:GetBalances())
     end
     sendJob(LocalPlayer.state['tfc:job'])
+    sendCounts(GlobalState['tfc:counts'])
 end)
 
 TFC.OnPlayerUnloaded(function()

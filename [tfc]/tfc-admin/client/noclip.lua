@@ -98,7 +98,6 @@ end
 function AdminNoclip.set(on)
     if on == active then return end
     if on then
-        if not AdminClient.isAdmin() then return end
         local r = TFC.Callback.Await('admin:noclip', true)
         if not r or not r.ok then return notify(r and r.error or 'not allowed', 'error') end
         active = true
@@ -128,8 +127,15 @@ end
 
 TFC.OnNet('tfc-admin:client:noclip', AdminNoclip.toggle)
 
+-- The key works for everyone, but the server only says yes to admins (others get nothing).
 RegisterCommand('tfc_noclip', function()
-    if AdminClient.isAdmin() then AdminNoclip.toggle() end
+    if active then return AdminNoclip.set(false) end
+    if not AdminClient.isAdmin() then
+        -- Flag missing (e.g. not synced yet): ask the server quietly instead of trusting it.
+        local r = TFC.Callback.Await('admin:noclip', false)
+        if not r or not r.ok then return end
+    end
+    AdminNoclip.set(true)
 end, false)
 RegisterKeyMapping('tfc_noclip', 'Noclip (admins only)', 'keyboard', AdminConfig.NoclipKey)
 
