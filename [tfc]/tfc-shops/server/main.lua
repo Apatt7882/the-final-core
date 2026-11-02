@@ -490,8 +490,8 @@ local function checkConfig()
 end
 
 local function load()
-    local existed = (tonumber(MySQL.scalar.await(
-        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'tfc_shops'")) or 0) > 0
+    local existed = (tonumber((MySQL.scalar.await(
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'tfc_shops'"))) or 0) > 0
     MySQL.query.await(SCHEMA_SHOPS)
     MySQL.query.await(SCHEMA_STOCK)
     if not existed then seed() end

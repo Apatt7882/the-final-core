@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'tfc-hud'
 author 'Andrew'
-description 'The Final Core - HUD: date/time, money, job, location and who's on'
+description 'The Final Core - HUD: date/time, money, job, location and staff/duty counts'
 version '0.3.0'
 
 dependency 'tfc-core'

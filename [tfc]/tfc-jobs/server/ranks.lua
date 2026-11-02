@@ -102,7 +102,7 @@ end
 
 ---Number of characters (online or not) holding a rank.
 function JobsSrv.CountAtGrade(name, grade)
-    return tonumber(MySQL.scalar.await('SELECT COUNT(*) FROM tfc_character_jobs WHERE job = ? AND grade = ?', { name, grade })) or 0
+    return tonumber((MySQL.scalar.await('SELECT COUNT(*) FROM tfc_character_jobs WHERE job = ? AND grade = ?', { name, grade }))) or 0
 end
 
 ---Insert a rank at `position` (0 = new lowest rank; omit for a new top rank).

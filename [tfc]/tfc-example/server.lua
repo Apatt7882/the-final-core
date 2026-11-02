@@ -53,7 +53,7 @@ RegisterCommand('tfcwhoami', function(source)
 
     local pos = player:GetPosition()
     TFC.Log.Info('%s | cid %s | slot %d | joins %s | at %s', player:GetFullName(), player:GetCid(), player:GetSlot(),
-        tostring(player:GetMetadata('example_joins')),
+        tostring((player:GetMetadata('example_joins'))),
         pos and ('%.1f, %.1f, %.1f'):format(pos.x, pos.y, pos.z) or 'unknown')
 end, false)
 

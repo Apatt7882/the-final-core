@@ -194,7 +194,7 @@ local function payFine(target, amount, reason)
     if ok then return true, account end
     if not second then return false end
 
-    local have = math.max(0, math.tointeger(acc:GetBalance(target, first)) or 0)
+    local have = math.max(0, math.tointeger((acc:GetBalance(target, first))) or 0)
     local part = math.min(have, amount)
     local rest = amount - part
     if not acc:RemoveMoney(target, second, rest, reason) then return false end
@@ -415,7 +415,7 @@ end)
 
 TFC.On('playerLoaded', function(src)
     local p = TFC.GetPlayer(src)
-    local left = p and math.tointeger(p:GetMetadata('jail'))
+    local left = p and math.tointeger((p:GetMetadata('jail')))
     if left and left > 0 then
         CreateThread(function()
             Wait(4000) -- let the client spawn first
