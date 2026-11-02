@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, character select) are done. See the design doc for the full plan.
+Status: **phase 4b (jobs)**. Phases 1-3 and 4a (accounts, HUD) are done. See the design doc for the full plan.
 
 ## Layout
 
@@ -27,6 +27,7 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
   tfc-multichar/      -- character select + creation (custom NUI in html/)
   tfc-accounts/       -- cash, bank and credit; transaction log
   tfc-hud/            -- date/time, money, job and location HUD (NUI)
+  tfc-jobs/           -- jobs, ranks, duty, paychecks, boss commands
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -42,6 +43,7 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
    ensure tfc-core
    ensure tfc-multichar
    ensure tfc-accounts
+   ensure tfc-jobs
    ensure tfc-hud
    ensure tfc-example
 
@@ -49,9 +51,28 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
    add_ace group.admin command.givemoney allow
    add_ace group.admin command.takemoney allow
    add_ace group.admin command.setmoney allow
+   add_ace group.admin command.setjob allow
    ```
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
+
+## Check that phase 4b works (jobs)
+
+Jobs, ranks and pay are in `tfc-jobs/config.lua` (unemployed, police, ambulance, mechanic, taxi to start).
+
+| Where | Do | Expect |
+| --- | --- | --- |
+| Server console | Start the server | `module jobs v0.1.0 ready`, `jobs ready: 5 jobs, paycheck every 15 min` |
+| In game | Load a character | HUD job line: "Unemployed" (no duty dot) |
+| In game | `/setjob me police 5` | HUD: "LSPD · Chief of Police" with a grey dot (off duty) |
+| In game | `/duty` | Dot turns green; `/duty` again turns it grey |
+| In game | Stay on duty 15 minutes | Bank +$850 "Paycheck: LSPD Chief of Police" |
+| In game | `/job` | Your job, rank, duty and pay |
+| Second player | `/hire <their id> 1`, `/promote`, `/demote`, `/fire` | Works for ranks below yours; refused at or above your rank |
+| Reconnect | Rejoin | Same job and rank; duty starts off |
+
+Boss commands work for ranks marked `boss = true` (Captain and Chief for police). Bosses can only hire, promote
+up to, or manage people below their own rank.
 
 ## Check that phase 4a works
 
@@ -86,8 +107,7 @@ only suggested to players with the ACE permission. Use `me` as the ID for yourse
 `/givemoney me cash 500 event prize`.
 
 Settings (`tfc-hud/config.lua`): in-game vs real time, 12/24 hour, credit row, location on/off, toggle command.
-The job line reads the `tfc:job` state bag that `tfc-jobs` (phase 4b) will set:
-`{ label = 'Police', gradeLabel = 'Sergeant', onDuty = true }`.
+The job line reads the `tfc:job` state bag set by `tfc-jobs`.
 
 Phase 3 checks (character select) still apply: see the git history of this file.
 
@@ -166,6 +186,19 @@ Phase 3 adds: `exports['tfc-core']:DeleteCharacter(src, id)` and `GetConfig(key)
 Client: `exports['tfc-accounts']:GetBalance(account)`, `GetBalances()`, hook `moneyChanged(account, balance, delta, reason)`.
 Server hook: `moneyChanged(source, account, balance, delta, reason)`.
 Money changes are written to the database immediately (not batched), one atomic UPDATE each.
+
+### Jobs (phase 4b, `exports['tfc-jobs']`, server)
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `GetJob(src)` | `{ name, label, grade, gradeLabel, onDuty, isBoss, pay }` | `onDuty` is nil for jobs without duty |
+| `SetJob(src, job, grade)` / `SetJobByCid(cid, job, grade)` | ok, err | `SetJobByCid` works for offline characters |
+| `SetDuty(src, bool)` / `ToggleDuty(src)` / `IsOnDuty(src)` | | |
+| `HasJob(src, job, minGrade?)` | bool | e.g. `HasJob(src, 'police', 2)` = Sergeant or above |
+| `GetPlayersWithJob(job, onDutyOnly?)` | sources | e.g. count on-duty police |
+
+State bag `tfc:job` on every loaded player (public). Server hooks: `jobChanged(source, job, oldJob)`,
+`dutyChanged(source, onDuty, job)`. Client: `exports['tfc-jobs']:GetJob()`, `IsOnDuty()`, hook `jobChanged(job)`.
 
 Commands: `TFC.RegisterCommand(name, { help, params, restricted }, handler)` (server) registers a command with chat
 suggestions (only shown to players allowed to use it) and an automatic usage message when arguments are missing.
