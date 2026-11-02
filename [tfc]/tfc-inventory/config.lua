@@ -12,8 +12,16 @@ InventoryConfig = {
     ---Cash for new characters comes from tfc-accounts (cash default), not from here.
     StartingItems = {
         { 'phone', 1 },
-        { 'water', 2 },
-        { 'sandwich', 2 },
+        { 'bandage', 2 },
+    },
+
+    ---Weapons (phase 6c): turn off GTA's weapon wheel and weapon-select keys so weapons
+    ---only come from the inventory, and remove any weapon not equipped from it.
+    Weapons = {
+        DisableWeaponWheel = true,
+        RemoveOtherWeapons = true,
+        ---Prefix of generated serial numbers.
+        SerialPrefix = 'TFC',
     },
 
     ---Seconds between batched saves of changed inventories (always saved on logout too).

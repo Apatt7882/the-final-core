@@ -56,6 +56,23 @@ function def(name) {
     return state.items[name] || { label: name, weight: 0 };
 }
 
+const META_LABELS = { serial: 'Serial', durability: 'Condition', ammo: 'Loaded', name: 'Name', dob: 'Born', cid: 'Citizen ID', number: 'Number' };
+
+function metaRows(item, d) {
+    const m = item.metadata || {};
+    const order = ['durability', 'ammo', 'serial'];
+    const keys = [...order.filter((k) => k in m), ...Object.keys(m).filter((k) => !order.includes(k))];
+    return keys
+        .filter((k) => !k.startsWith('_') && k !== 'weight')
+        .map((k) => {
+            let v = m[k];
+            if (k === 'durability') v = `${Math.round(v)}%${v <= 0 ? ' (jammed)' : ''}`;
+            else if (k === 'ammo' && d.clip) v = `${v} / ${d.clip}`;
+            else if (typeof v === 'object') v = JSON.stringify(v);
+            return `<dt>${esc(META_LABELS[k] || k)}</dt><dd>${esc(v)}</dd>`;
+        }).join('');
+}
+
 function initials(label) {
     const words = label.split(/\s+/).filter(Boolean);
     return (words.length > 1 ? words[0][0] + words[1][0] : label.slice(0, 2)).toUpperCase();
@@ -87,8 +104,12 @@ function slotHtml(inv, slot, item, withKey) {
 
     const d = def(item.name);
     const img = `<img src="${esc(state.imagePath + item.name)}.png" alt="" data-fallback="${esc(initials(d.label))}">`;
+    const cond = item.metadata && typeof item.metadata.durability === 'number'
+        ? `<span class="cond"><span style="width:${Math.max(0, Math.min(100, item.metadata.durability))}%" class="${item.metadata.durability <= 0 ? 'zero' : item.metadata.durability < 30 ? 'low' : ''}"></span></span>`
+        : '';
     return `<div class="slot filled" data-inv="${esc(inv)}" data-slot="${slot}">
         ${key}
+        ${cond}
         <span class="count">${esc(countText(item))}</span>
         ${img}
         <span class="label${item.name === 'cash' ? ' money' : ''}">${esc(labelText(item, d))}</span>
@@ -308,9 +329,7 @@ function moveTooltip(e) {
     if (!item) return;
     const d = def(item.name);
 
-    const meta = Object.entries(item.metadata || {})
-        .filter(([k]) => !k.startsWith('_'))
-        .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</dd>`).join('');
+    const meta = metaRows(item, d);
     const weight = (item.metadata && item.metadata.weight) || d.weight || 0;
 
     tip.innerHTML = `
@@ -320,7 +339,7 @@ function moveTooltip(e) {
             <dt>Weight</dt><dd>${kg(weight * item.count)}${item.count > 1 && weight ? ` (${kg(weight)} each)` : ''}</dd>
             ${meta}
         </dl>
-        ${d.usable && el.dataset.inv === state.player.id ? '<div class="t-use">Double-click or right-click to use</div>' : ''}`;
+        ${d.usable && el.dataset.inv === state.player.id ? `<div class="t-use">${d.weapon ? 'Double-click or use its hotbar key to hold / put away' : 'Double-click or right-click to use'}</div>` : ''}`;
     tip.classList.remove('hidden');
 
     const pad = 16;
@@ -369,21 +388,31 @@ function flashHotbar(msg) {
 const sampleItems = {
     cash: { label: 'Cash', weight: 0, description: 'Paper money. Counts as your cash balance.' },
     phone: { label: 'Phone', weight: 190, description: 'A smartphone.' },
-    water: { label: 'Water', weight: 500, description: 'A bottle of water.', usable: true },
-    sandwich: { label: 'Sandwich', weight: 250, description: 'A wrapped deli sandwich.', usable: true },
     bandage: { label: 'Bandage', weight: 100, description: 'Stops minor bleeding. Restores some health.', usable: true },
     lockpick: { label: 'Lockpick', weight: 150, description: 'For locks that are not yours.' },
     radio: { label: 'Radio', weight: 600, description: 'A handheld two-way radio.' },
     id_card: { label: 'ID Card', weight: 10, description: 'Government-issued identification.' },
     repair_kit: { label: 'Repair Kit', weight: 2500, description: 'Basic tools to get a car running again.' },
+    pistol: { label: 'Pistol', weight: 900, description: 'Uses 9mm Rounds.', usable: true, weapon: true, clip: 12 },
+    carbinerifle: { label: 'Carbine Rifle', weight: 3400, description: 'Uses 5.56 Rounds.', usable: true, weapon: true, clip: 30 },
+    ammo_9mm: { label: '9mm Rounds', weight: 8, description: 'For most pistols and SMGs.', usable: true },
+    weed_bag: { label: 'Bag of Weed', weight: 30, description: 'A dime bag. Use with rolling papers to roll two joints.', usable: true },
+    joint: { label: 'Joint', weight: 3, description: 'Takes the edge off.', usable: true },
+    coke_bag: { label: 'Bag of Coke', weight: 10, description: 'Brief burst of speed.', usable: true },
+    knife: { label: 'Knife', weight: 300, usable: true, weapon: true },
 };
 
 const sample = {
     id: 'player:1', type: 'player', label: 'Dev Tester', slots: 40, maxWeight: 30000, weight: 0,
     items: [
-        { slot: 1, name: 'water', count: 3 },
-        { slot: 2, name: 'sandwich', count: 2 },
+        { slot: 1, name: 'pistol', count: 1, metadata: { serial: 'TFC-7K2M9QXA', ammo: 9, durability: 86.4 } },
+        { slot: 2, name: 'carbinerifle', count: 1, metadata: { serial: 'TFC-PL3NW8RD', ammo: 30, durability: 22 } },
         { slot: 3, name: 'bandage', count: 6 },
+        { slot: 5, name: 'knife', count: 1 },
+        { slot: 9, name: 'ammo_9mm', count: 48 },
+        { slot: 13, name: 'weed_bag', count: 5 },
+        { slot: 14, name: 'joint', count: 3 },
+        { slot: 15, name: 'coke_bag', count: 2 },
         { slot: 4, name: 'phone', count: 1, metadata: { number: '555-0142' } },
         { slot: 6, name: 'cash', count: 1250 },
         { slot: 7, name: 'id_card', count: 1, metadata: { name: 'Dev Tester', dob: '1994-03-12', cid: 'K7Q2M9PA' } },
@@ -430,6 +459,6 @@ if (!IN_GAME) {
     open({
         items: sampleItems, player: sample, imagePath: 'images/', hotbar: 5,
         secondary: { id: 'trunk:46LPZE29', type: 'trunk', label: 'Trunk (46LPZE29)', slots: 20, maxWeight: 40000, weight: 7600,
-            items: [{ slot: 1, name: 'repair_kit', count: 2 }, { slot: 2, name: 'water', count: 6 }, { slot: 5, name: 'radio', count: 1 }] },
+            items: [{ slot: 1, name: 'repair_kit', count: 2 }, { slot: 2, name: 'lockpick', count: 6 }, { slot: 5, name: 'radio', count: 1 }] },
     });
 }

@@ -8,7 +8,7 @@ local NO_RESPONSE = { ok = false, error = 'no response from server, try again' }
 local function itemDefs()
     local defs = {}
     for name, def in pairs(Items) do
-        defs[name] = { label = def.label, weight = def.weight, description = def.description, usable = def.usable == true, stack = def.stack ~= false }
+        defs[name] = { label = def.label, weight = def.weight, description = def.description, usable = def.usable == true, stack = def.stack ~= false, weapon = def.weapon == true, clip = def.clip }
     end
     return defs
 end
@@ -75,9 +75,11 @@ local function use(slot)
     local r = TFC.Callback.Await('inventory:use', slot) or NO_RESPONSE
     if not r.ok then
         TFC.UI.Notify({ title = 'Inventory', description = r.error, type = 'error' })
-    elseif r.close then
-        close()
+        return r
     end
+    if r.close then close() end
+    if r.weapon then ClientWeapons.handle(r.weapon) end
+    if r.weaponUpdate then ClientWeapons.update(r.weaponUpdate) end
     return r
 end
 
@@ -100,7 +102,10 @@ end
 -- Server -> client -------------------------------------------------------------------------------
 
 TFC.OnNet('tfc-inventory:client:sync', function(view)
-    if view and view.type == 'player' then playerView = view end
+    if view and view.type == 'player' then
+        playerView = view
+        ClientWeapons.onInventory(view)
+    end
     if isOpen then SendNUIMessage({ action = 'update', inventory = view }) end
 end)
 
@@ -119,18 +124,76 @@ TFC.OnNet('tfc-inventory:client:item', function(name, def)
     Items[name] = def
 end)
 
--- Built-in item effects.
-TFC.OnNet('tfc-inventory:client:effect', function(effect)
+-- Built-in item effects -----------------------------------------------------------------------
+
+local activeScreen = nil
+local screenEnds = 0
+local sprintEnds = 0
+
+local function playAnim(anim)
     local ped = PlayerPedId()
-    if effect.heal then
-        local max = GetEntityMaxHealth(ped)
-        SetEntityHealth(ped, math.min(max, GetEntityHealth(ped) + effect.heal))
+    if IsPedInAnyVehicle(ped, false) then return end
+    if anim.scenario then
+        TaskStartScenarioInPlace(ped, anim.scenario, 0, true)
+        Wait(anim.ms or 5000)
+        ClearPedTasks(ped)
+        return
     end
+    RequestAnimDict(anim.dict)
+    local t = GetGameTimer() + 3000
+    while not HasAnimDictLoaded(anim.dict) and GetGameTimer() < t do Wait(0) end
+    if not HasAnimDictLoaded(anim.dict) then return end
+    TaskPlayAnim(ped, anim.dict, anim.clip, 8.0, -8.0, anim.ms or 3000, 49, 0.0, false, false, false)
+    Wait(anim.ms or 3000)
+    StopAnimTask(ped, anim.dict, anim.clip, 1.0)
+    RemoveAnimDict(anim.dict)
+end
+
+TFC.OnNet('tfc-inventory:client:effect', function(effect)
+    CreateThread(function()
+        if effect.anim then playAnim(effect.anim) end
+
+        local ped = PlayerPedId()
+        if effect.heal then
+            local max = GetEntityMaxHealth(ped)
+            SetEntityHealth(ped, math.min(max, GetEntityHealth(ped) + effect.heal))
+        end
+        if effect.armor then
+            SetPedArmour(ped, math.min(100, GetPedArmour(ped) + effect.armor))
+        end
+
+        if effect.sprint then
+            local mult, seconds = effect.sprint[1], effect.sprint[2]
+            SetRunSprintMultiplierForPlayer(PlayerId(), math.min(mult, 1.49))
+            sprintEnds = GetGameTimer() + seconds * 1000
+            CreateThread(function()
+                Wait(seconds * 1000)
+                if GetGameTimer() >= sprintEnds then SetRunSprintMultiplierForPlayer(PlayerId(), 1.0) end
+            end)
+        end
+
+        if effect.screen then
+            local name, seconds = effect.screen[1], effect.screen[2]
+            if activeScreen and activeScreen ~= name then AnimpostfxStop(activeScreen) end
+            activeScreen = name
+            AnimpostfxPlay(name, 0, true)
+            screenEnds = GetGameTimer() + seconds * 1000
+            CreateThread(function()
+                Wait(seconds * 1000)
+                if activeScreen == name and GetGameTimer() >= screenEnds then
+                    AnimpostfxStop(name)
+                    activeScreen = nil
+                end
+            end)
+        end
+    end)
 end)
 
 TFC.OnPlayerUnloaded(function()
     close()
     playerView = nil
+    if activeScreen then AnimpostfxStop(activeScreen) activeScreen = nil end
+    SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
 end)
 
 -- NUI -> client -> server ---------------------------------------------------------------------------

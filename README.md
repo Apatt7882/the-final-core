@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 6b (drops, vehicle storage, giving)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 6c (weapons, drugs, item images)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -59,6 +59,40 @@ Status: **phase 6b (drops, vehicle storage, giving)**. Phases 1-4 are done; phas
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
 
+## Check that phase 6c works (weapons, drugs, item images)
+
+Every item now has an image (`tfc-inventory/html/images/`). Food and water are gone; any left in inventories is removed
+(with a console warning) the next time that inventory loads.
+
+**Weapons** (28, in `tfc-inventory/items.lua`): melee (knife, switchblade, bat, crowbar, hammer, golf club, knuckles,
+nightstick, flashlight), pistols (pistol, combat, SNS, vintage, heavy, .50, revolver, taser), SMGs (micro, machine pistol,
+SMG, PDW), rifles (carbine, assault, compact), shotguns (pump, sawed-off), tools (extinguisher, jerry can).
+Ammo: `ammo_9mm`, `ammo_45`, `ammo_556`, `ammo_762`, `ammo_12g`.
+
+| Do | Expect |
+| --- | --- |
+| `/giveitem me pistol` and `/giveitem me ammo_9mm 50` | Pistol with a serial, 0 loaded, 100% condition (hover it) |
+| Put the pistol in slot 1, press **1** | You hold it; press 1 again to put it away. Tab weapon wheel and GTA's weapon keys do nothing |
+| Press **R** (or pull the trigger when empty) | Reloads 12 rounds from your 9mm stack |
+| Fire a few shots, reopen inventory | "Loaded" and "Condition" went down |
+| Drop or give the pistol while holding it | It's taken out of your hands |
+| `/giveitem me weapon_kit`, use it while holding a worn gun | Condition back to 100% (a gun at 0% is jammed and can't fire) |
+
+**Drugs**: `weed_bag`, `rolling_papers`, `joint`, `coke_bag`, `coke_brick`, `crack_rock`, `meth_bag`, `oxy`, `ecstasy`.
+
+| Item | When used |
+| --- | --- |
+| Bag of Weed (+ Rolling Papers) | Rolls 2 joints |
+| Joint | +10 health, smoking animation, 30 s visual effect |
+| Bag of Coke | 30 s sprint boost and visual effect |
+| Brick of Coke | Breaks into 20 bags (needs room) |
+| Crack Rock | +5 health, 20 s smaller sprint boost |
+| Bag of Meth | +25 armor, 45 s visual effect |
+| Oxy | +30 health |
+| Ecstasy | +10 armor, 60 s visual effect |
+
+Effects, amounts and durations are set per item in `items.lua` (`effect = { heal, armor, sprint, screen, anim }`).
+
 ## Check that phase 6b works (drops, trunks, gloveboxes, giving)
 
 F2 opens your inventory plus whatever is around you:
@@ -101,7 +135,7 @@ Items are defined in `tfc-inventory/items.lua`; sizes and starting items in `con
 `tfc-inventory/html/images/<item>.png` (items without one show a lettered tile).
 
 **Keys:** F2 opens the inventory and 1-5 use hotbar slots. Both can be rebound in GTA's Settings > Key Bindings > FiveM.
-Until inventory weapons (6c), 1-5 also still switch weapon categories.
+GTA's weapon wheel and weapon keys are turned off (`Weapons.DisableWeaponWheel` in config).
 
 **Cash:** with `CashItem = true` in `tfc-accounts/config.lua`, cash is an inventory item. Existing cash balances move
 into each character's inventory the next time they load. Bank and credit are unchanged.
@@ -266,6 +300,8 @@ Money changes are written to the database immediately (not batched), one atomic 
 | `Search(target, name)` | `{ slot, count, metadata }[]` |
 | `SetMetadata(target, slot, metadata)` / `GetInventory(target)` / `ClearInventory(target, keep?)` | |
 | `RegisterItem(name, def)` / `GetItems()` | add items from other resources |
+
+Giving a weapon with `AddItem` creates a serial number, 0 rounds loaded and 100% condition automatically.
 
 Server hooks: `itemUsed(source, name, slot)`, `itemCountChanged(source, name, count, delta, reason)`.
 Admin: `/giveitem`, `/removeitem`, `/clearinventory`.

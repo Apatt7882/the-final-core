@@ -271,3 +271,19 @@ html, body {
 .hotbar.fade { opacity: 0; }
 .hotbar .slot { background: rgba(14, 16, 20, 0.8); }
 .hotbar .slot.used { border-color: var(--accent); }
+
+/* Weapon condition bar */
+.slot .cond {
+    position: absolute;
+    left: calc(8 * var(--u));
+    right: calc(8 * var(--u));
+    bottom: calc(24 * var(--u));
+    height: calc(3 * var(--u));
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.slot .cond span { display: block; height: 100%; background: #4cc38a; }
+.slot .cond span.low { background: #e8a33d; }
+.slot .cond span.zero { background: #e5484d; }

@@ -13,6 +13,7 @@
         "Items",
         "Inv",
         "InvSrv",
+        "ClientWeapons",
         "Jobs",
         "JobsSrv",
         "source",

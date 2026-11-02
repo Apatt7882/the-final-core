@@ -178,6 +178,23 @@ end
 local function AddItem(target, name, count, metadata, slot, reason)
     local inv = resolve(target)
     if not inv then return false, 'inventory not found' end
+
+    -- Weapons are added one at a time so each gets its own serial number.
+    local def = Items[name]
+    if def and def.weapon and InvSrv.weaponMeta then
+        local n = Inv.ValidCount(count)
+        if not n then return false, 'count must be a whole number above 0' end
+        local fits, err = Inv.CanFit(inv, name, n, metadata, slot)
+        if not fits then return false, err end
+        return tracked({ inv }, { [name] = true }, reason, function()
+            for i = 1, n do
+                local ok, addErr = Inv.Add(inv, name, 1, InvSrv.weaponMeta(name, metadata), i == 1 and slot or nil)
+                if not ok then return false, addErr end
+            end
+            return true
+        end)
+    end
+
     return tracked({ inv }, { [name] = true }, reason, function()
         return Inv.Add(inv, name, count, metadata, slot)
     end)
@@ -275,6 +292,36 @@ InvSrv = {
     RemoveItem = RemoveItem,
 }
 
+---Take every item in `t.take` and give every item in `t.give`, all or nothing.
+function InvSrv.transform(src, inv, t)
+    for name, n in pairs(t.take) do
+        if Inv.Count(inv, name) < n then
+            return false, ('you need %dx %s'):format(n, Items[name].label)
+        end
+    end
+
+    local names = {}
+    for name in pairs(t.take) do names[name] = true end
+    for name in pairs(t.give) do names[name] = true end
+
+    return tracked({ inv }, names, 'combined', function()
+        for name, n in pairs(t.take) do Inv.RemoveItem(inv, name, n) end
+        for name, n in pairs(t.give) do
+            local ok, err = Inv.Add(inv, name, n)
+            if not ok then
+                -- Undo: remove what was given, return what was taken.
+                for gName, gN in pairs(t.give) do
+                    if gName == name then break end
+                    Inv.RemoveItem(inv, gName, gN)
+                end
+                for tName, tN in pairs(t.take) do Inv.Add(inv, tName, tN) end
+                return false, err == 'too heavy' and 'you cannot carry the result' or 'no room for the result'
+            end
+        end
+        return true
+    end)
+end
+
 -- Menu callbacks ---------------------------------------------------------------------------------
 
 ---Inventories this player may touch right now. (6b adds the open secondary: ground, trunk...)
@@ -345,6 +392,21 @@ TFC.Callback.Register('inventory:use', function(src, slot)
     local def = Items[item.name]
     if not def.usable then return { ok = false, error = ('%s cannot be used'):format(def.label) } end
 
+    -- Weapons, ammo and the gun kit (server/weapons.lua).
+    if InvSrv.handlesUse and InvSrv.handlesUse(item.name) then
+        local result = InvSrv.useWeaponItem(src, slot, item)
+        if result.ok then TFC.Emit('itemUsed', src, item.name, { slot = slot, name = item.name, count = item.count, metadata = Inv.Copy(item.metadata) }) end
+        return result
+    end
+
+    -- Transform: turn some items into others (roll joints, break down a brick...).
+    if def.transform then
+        local ok, err = InvSrv.transform(src, inv, def.transform)
+        if not ok then return { ok = false, error = err } end
+        TFC.Emit('itemUsed', src, item.name, { slot = slot, name = item.name, count = item.count })
+        return { ok = true, label = def.label }
+    end
+
     local used = { slot = slot, name = item.name, count = item.count, metadata = Inv.Copy(item.metadata) }
     if (def.consume or 0) > 0 then
         local ok, err = RemoveItem(src, item.name, def.consume, nil, slot, 'used')
@@ -383,7 +445,7 @@ CreateThread(function()
 
     local count = 0
     for _ in pairs(Items) do count = count + 1 end
-    TFC.RegisterModule({ name = 'inventory', version = '0.2.0' }, function()
+    TFC.RegisterModule({ name = 'inventory', version = '0.3.0' }, function()
         TFC.Log.Info('inventory ready: %d items', count)
     end)
 
