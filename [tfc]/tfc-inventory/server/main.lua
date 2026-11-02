@@ -121,7 +121,7 @@ local function ensure(src)
 
     inv.owner = src
     playerInv[src] = id
-    TriggerClientEvent('tfc-inventory:client:sync', src, Inv.View(inv))
+    TriggerClientEvent('tfc-inventory:client:sync', src, Inv.View(inv), true)
     return inv
 end
 
@@ -136,11 +136,11 @@ local function sync(inv)
     local view = Inv.View(inv)
     local sent = {}
     if inv.owner then
-        TriggerClientEvent('tfc-inventory:client:sync', inv.owner, view)
+        TriggerClientEvent('tfc-inventory:client:sync', inv.owner, view, true)
         sent[inv.owner] = true
     end
     for viewer in pairs(inv.viewers or {}) do
-        if not sent[viewer] then TriggerClientEvent('tfc-inventory:client:sync', viewer, view) end
+        if not sent[viewer] then TriggerClientEvent('tfc-inventory:client:sync', viewer, view, false) end
     end
 end
 
@@ -324,6 +324,15 @@ end
 
 -- Menu callbacks ---------------------------------------------------------------------------------
 
+---Cuffed (tfc-police) or downed (tfc-medical) players can't use their inventory.
+---@return string|nil reason
+function InvSrv.blocked(src)
+    local state = Player(src).state
+    if state['tfc:down'] then return 'you can\'t do that while you are down' end
+    if state['tfc:cuffed'] then return 'you can\'t do that while cuffed' end
+    return nil
+end
+
 ---Inventories this player may touch right now. (6b adds the open secondary: ground, trunk...)
 local function accessible(src)
     local set = {}
@@ -337,6 +346,8 @@ local function accessible(src)
 end
 
 TFC.Callback.Register('inventory:open', function(src, context)
+    local why = InvSrv.blocked(src)
+    if why then return { ok = false, error = why } end
     local inv = ensure(src)
     if not inv then return { ok = false, error = 'inventory not loaded yet' } end
 
@@ -358,6 +369,8 @@ TFC.Callback.Register('inventory:close', function(src)
 end, { rateLimit = 100 })
 
 TFC.Callback.Register('inventory:move', function(src, fromId, fromSlot, toId, toSlot, count)
+    local why = InvSrv.blocked(src)
+    if why then return { ok = false, error = why } end
     local allowed = accessible(src)
     if not allowed[fromId] or not allowed[toId] then return { ok = false, error = 'you cannot reach that' } end
 
@@ -380,6 +393,8 @@ TFC.Callback.Register('inventory:move', function(src, fromId, fromSlot, toId, to
 end, { rateLimit = 100 })
 
 TFC.Callback.Register('inventory:use', function(src, slot)
+    local why = InvSrv.blocked(src)
+    if why then return { ok = false, error = why } end
     local now = GetGameTimer()
     if lastUse[src] and now - lastUse[src] < Cfg.UseCooldown then return { ok = false, error = 'slow down' } end
     lastUse[src] = now
@@ -445,7 +460,7 @@ CreateThread(function()
 
     local count = 0
     for _ in pairs(Items) do count = count + 1 end
-    TFC.RegisterModule({ name = 'inventory', version = '0.3.0' }, function()
+    TFC.RegisterModule({ name = 'inventory', version = '0.3.1' }, function()
         TFC.Log.Info('inventory ready: %d items', count)
     end)
 

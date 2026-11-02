@@ -51,9 +51,9 @@ local function context()
     return { kind = 'ground' }
 end
 
-local function open()
+local function open(ctx)
     if isOpen or not TFC.PlayerData or IsPauseMenuActive() then return end
-    local r = TFC.Callback.Await('inventory:open', context()) or NO_RESPONSE
+    local r = TFC.Callback.Await('inventory:open', ctx or context()) or NO_RESPONSE
     if not r.ok then
         TFC.UI.Notify({ title = 'Inventory', description = r.error, type = 'error' })
         return
@@ -85,10 +85,13 @@ end
 
 -- Keys --------------------------------------------------------------------------------------
 
-RegisterCommand('inventory', function()
+-- The command is named 'tfc_inventory' (not 'inventory') so the new default key (Tab) applies
+-- to everyone: FiveM keeps old bindings per command name, and players who had F2 bound to the
+-- old command would otherwise keep it.
+RegisterCommand('tfc_inventory', function()
     if isOpen then close() else open() end
 end, false)
-RegisterKeyMapping('inventory', 'Open inventory', 'keyboard', InventoryConfig.OpenKey)
+RegisterKeyMapping('tfc_inventory', 'Open inventory', 'keyboard', InventoryConfig.OpenKey)
 
 for i = 1, InventoryConfig.HotbarSlots do
     RegisterCommand(('hotbar%d'):format(i), function()
@@ -101,12 +104,25 @@ end
 
 -- Server -> client -------------------------------------------------------------------------------
 
-TFC.OnNet('tfc-inventory:client:sync', function(view)
-    if view and view.type == 'player' then
+TFC.OnNet('tfc-inventory:client:sync', function(view, own)
+    -- `own` is false when this is someone else's inventory we are searching.
+    if view and view.type == 'player' and own ~= false then
         playerView = view
         ClientWeapons.onInventory(view)
     end
     if isOpen then SendNUIMessage({ action = 'update', inventory = view }) end
+end)
+
+-- Police search: open the other player's inventory next to ours.
+TFC.OnNet('tfc-inventory:client:openSearch', function(target)
+    if isOpen then close() end
+    open({ kind = 'player', target = target })
+end)
+
+-- Cuffed or downed: close the window and put the weapon away.
+TFC.OnNet('tfc-inventory:client:forceClose', function()
+    close()
+    ClientWeapons.forceHolster()
 end)
 
 TFC.OnNet('tfc-inventory:client:secondaryClosed', function(id)

@@ -54,6 +54,11 @@ local function equip(w)
     end
 end
 
+---Put the held weapon away (cuffed, downed...).
+function ClientWeapons.forceHolster()
+    holster(true)
+end
+
 ---Called by client.lua with the server's answer to using a weapon / ammo / kit.
 function ClientWeapons.handle(w)
     if w.action == 'equip' then equip(w)

@@ -25,7 +25,6 @@ JobsSrv = { cache = {}, ready = false }
 ---@field name string
 ---@field grade integer
 ---@field onDuty boolean
----@field minutes integer on-duty minutes towards the next paycheck
 
 ---@type table<integer, TFCJobState>
 local cache = JobsSrv.cache
@@ -155,7 +154,7 @@ function JobsSrv.Load(src)
     local now = TFC.GetPlayer(src)
     if not now or now.characterId ~= charId then return nil end
 
-    cache[src] = { charId = charId, cid = cid, name = name, grade = grade, onDuty = false, minutes = 0 }
+    cache[src] = { charId = charId, cid = cid, name = name, grade = grade, onDuty = false }
     JobsSrv.Publish(src)
     return cache[src]
 end
@@ -188,7 +187,6 @@ local function SetJob(src, name, grade)
             state.onDuty = false
             TFC.Emit('dutyChanged', src, false, old) -- closes the duty session
         end
-        state.minutes = 0
     end
     state.name, state.grade = name, grade
 
@@ -299,10 +297,10 @@ TFC.On('playerUnloaded', function(src)
     cache[src] = nil
 end)
 
--- Paychecks: count working minutes per player; pay when they reach PaycheckMinutes.
--- Two passes: first count minutes and collect who is due (no waiting, so the cache can't
--- change under us), then pay each one. Every step is protected so one bad paycheck can
--- never stop the loop for everyone else.
+-- Paychecks: paid on the clock, every PaycheckMinutes (15 -> HH:00, HH:15, HH:30, HH:45, server
+-- time), to everyone who is working at that moment. No playtime needed, so people who just
+-- clocked in still get the next one. Pay is collected first (no waiting while we walk the
+-- cache), then each paycheck is paid separately so one failure can't stop the rest.
 
 local function payOne(due)
     local state = cache[due.src]
@@ -319,42 +317,66 @@ local function payOne(due)
     end
 end
 
-CreateThread(function()
-    while true do
-        Wait(60000)
-
-        local due = {}
-        local okCount, countErr = pcall(function()
-            for src, state in pairs(cache) do
-                if isWorking(state) then
-                    state.minutes = state.minutes + 1
-                    if state.minutes >= JobsConfig.PaycheckMinutes then
-                        state.minutes = 0
-                        local grade = Jobs[state.name].grades[state.grade]
-                        local pay = grade and grade.pay or 0
-                        if pay > 0 then
-                            due[#due + 1] = {
-                                src = src, charId = state.charId, name = state.name, pay = pay,
-                                reason = ('Paycheck: %s'):format(JobsSrv.Describe(state.name, state.grade)),
-                            }
-                        end
-                    end
-                end
-            end
-        end)
-        if not okCount then TFC.Log.Error('paycheck count failed: %s', tostring(countErr)) end
-
-        if #due > 0 then
-            if GetResourceState('tfc-accounts') ~= 'started' then
-                TFC.Log.Warn('%d paycheck(s) skipped: tfc-accounts is not started', #due)
-            else
-                for _, d in ipairs(due) do
-                    local ok, err = pcall(payOne, d)
-                    if not ok then TFC.Log.Error('paycheck for %s failed: %s', d.src, tostring(err)) end
+---Pay everyone who is working right now. Returns how many paychecks were sent.
+function JobsSrv.RunPayroll()
+    local due = {}
+    local okCount, countErr = pcall(function()
+        for src, state in pairs(cache) do
+            if isWorking(state) then
+                local grade = Jobs[state.name].grades[state.grade]
+                local pay = grade and grade.pay or 0
+                if pay > 0 then
+                    due[#due + 1] = {
+                        src = src, charId = state.charId, name = state.name, pay = pay,
+                        reason = ('Paycheck: %s'):format(JobsSrv.Describe(state.name, state.grade)),
+                    }
                 end
             end
         end
+    end)
+    if not okCount then TFC.Log.Error('payroll failed: %s', tostring(countErr)) end
+    if #due == 0 then return 0 end
 
+    if GetResourceState('tfc-accounts') ~= 'started' then
+        TFC.Log.Warn('%d paycheck(s) skipped: tfc-accounts is not started', #due)
+        return 0
+    end
+    for _, d in ipairs(due) do
+        local ok, err = pcall(payOne, d)
+        if not ok then TFC.Log.Error('paycheck for %s failed: %s', d.src, tostring(err)) end
+    end
+    TFC.Log.Info('payroll: %d paycheck(s)', #due)
+    return #due
+end
+
+local function interval()
+    return math.max(1, math.tointeger(JobsConfig.PaycheckMinutes) or 15) * 60
+end
+
+---Seconds until the next payday on the clock.
+function JobsSrv.SecondsToPayday()
+    local now = os.time()
+    local step = interval()
+    return (now // step + 1) * step - now
+end
+
+CreateThread(function()
+    local step = interval()
+    local nextPay = (os.time() // step + 1) * step
+    while true do
+        -- Short sleeps so a long server hitch can't push payday back by a whole interval.
+        Wait(math.min(30, math.max(1, nextPay - os.time())) * 1000)
+        if os.time() >= nextPay then
+            nextPay = (os.time() // step + 1) * step
+            JobsSrv.RunPayroll()
+        end
+    end
+end)
+
+-- Keep open duty sessions' end time current (for hours-worked stats).
+CreateThread(function()
+    while true do
+        Wait(60000)
         local okTouch, touchErr = pcall(JobsSrv.TouchDutySessions)
         if not okTouch then TFC.Log.Error('duty session update failed: %s', tostring(touchErr)) end
     end
@@ -381,7 +403,7 @@ TFC.RegisterCommand('job', { help = 'Show your job, rank and pay' }, function(sr
     local state = cache[src]
     if state and job.pay > 0 then
         if isWorking(state) then
-            text = text .. (' | next paycheck in %d min'):format(math.max(1, JobsConfig.PaycheckMinutes - state.minutes))
+            text = text .. (' | next paycheck in %d min'):format(math.max(1, math.ceil(JobsSrv.SecondsToPayday() / 60)))
         else
             text = text .. ' | not earning: use /duty to clock in'
         end

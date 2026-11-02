@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+        <main class="window" role="dialog" aria-modal="true" aria-labelledby="title">
+            <header class="head">
+                <div>
+                    <p class="brand">Admin</p>
+                    <h1 id="title">Admin menu</h1>
+                </div>
+                <div class="head-right">
+                    <button class="secondary small" data-self="noclip">Noclip</button>
+                    <button class="secondary small" data-self="tpm">To waypoint</button>
+                    <button class="secondary small" data-self="back">Back</button>
+                    <button class="icon-btn" id="close" aria-label="Close">
+                        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <nav class="tabs" role="tablist">
+                <button class="tab" data-tab="players" aria-selected="true">Players <span class="count" id="player-count"></span></button>
+                <button class="tab" data-tab="items">Items <span class="count" id="item-count"></span></button>
+            </nav>
+
+            <!-- Players -->
+            <section class="body" data-panel="players">
+                <div class="list-col">
+                    <div class="toolbar">
+                        <input id="p-search" placeholder="Search by ID, character or FiveM name" autocomplete="off">
+                        <button class="ghost small" id="refresh">Refresh</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>ID</th><th>Player</th><th>Job</th><th>Status</th><th class="num">Ping</th></tr></thead>
+                            <tbody id="p-rows"></tbody>
+                        </table>
+                        <p class="empty hidden" id="p-empty">Nobody matches.</p>
+                    </div>
+                </div>
+
+                <aside class="side" id="p-side">
+                    <div class="side-empty" id="p-none">Select a player</div>
+                    <div class="hidden" id="p-detail">
+                        <p class="kicker" id="d-id"></p>
+                        <h2 id="d-name"></h2>
+                        <p class="muted" id="d-account"></p>
+                        <dl class="facts" id="d-facts"></dl>
+
+                        <div class="actions">
+                            <button class="secondary" data-act="goto">Go to</button>
+                            <button class="secondary" data-act="bring">Bring</button>
+                            <button class="secondary" data-act="spectate">Spectate</button>
+                            <button class="secondary" data-act="revive">Revive</button>
+                            <button class="secondary" data-act="heal">Heal</button>
+                            <button class="secondary" data-act="freeze" id="freeze-btn">Freeze</button>
+                            <button class="secondary wide" id="give-to">Give item…</button>
+                        </div>
+
+                        <label class="field-label" for="kick-reason">Kick</label>
+                        <div class="kick-row">
+                            <input id="kick-reason" placeholder="Reason" maxlength="120" autocomplete="off">
+                            <button class="danger" id="kick">Kick</button>
+                        </div>
+                    </div>
+                    <p class="msg" id="p-msg" role="status"></p>
+                </aside>
+            </section>
+
+            <!-- Items -->
+            <section class="body hidden" data-panel="items">
+                <div class="list-col">
+                    <div class="toolbar">
+                        <input id="i-search" placeholder="Search items" autocomplete="off">
+                    </div>
+                    <div class="chips" id="i-cats">
+                        <button class="chip" data-cat="all" aria-pressed="true">All</button>
+                        <button class="chip" data-cat="general">General</button>
+                        <button class="chip" data-cat="drug">Drugs</button>
+                        <button class="chip" data-cat="weapon">Weapons</button>
+                        <button class="chip" data-cat="ammo">Ammo</button>
+                    </div>
+                    <div class="grid-wrap"><div class="grid" id="i-grid"></div>
+                        <p class="empty hidden" id="i-empty">No items match.</p></div>
+                </div>
+
+                <aside class="side">
+                    <div class="side-empty" id="i-none">Select an item</div>
+                    <div class="hidden" id="i-detail">
+                        <div class="pick-image"><img id="i-img" alt=""></div>
+                        <h2 id="i-name"></h2>
+                        <p class="code" id="i-code"></p>
+                        <p class="muted" id="i-desc"></p>
+
+                        <label class="field-label" for="i-target">Give to</label>
+                        <select id="i-target"></select>
+
+                        <label class="field-label" for="i-qty">Amount</label>
+                        <div class="stepper">
+                            <button id="q-minus" aria-label="Less">−</button>
+                            <input id="i-qty" type="number" min="1" value="1">
+                            <button id="q-plus" aria-label="More">+</button>
+                        </div>
+                        <div class="quick" id="i-quick">
+                            <button class="ghost small" data-q="1">1</button>
+                            <button class="ghost small" data-q="10">10</button>
+                            <button class="ghost small" data-q="50">50</button>
+                            <button class="ghost small" data-q="100">100</button>
+                        </div>
+                        <button class="primary" id="give">Give</button>
+                    </div>
+                    <p class="msg" id="i-msg" role="status"></p>
+                </aside>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

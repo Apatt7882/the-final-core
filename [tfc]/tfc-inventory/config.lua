@@ -6,7 +6,8 @@ InventoryConfig = {
     HotbarSlots = 5,
 
     ---Default key to open the inventory (players can rebind it in GTA's key bindings).
-    OpenKey = 'F2',
+    ---Tab is free because GTA's weapon wheel is turned off (Weapons.DisableWeaponWheel).
+    OpenKey = 'TAB',
 
     ---Items every new character starts with: { name, count, metadata? }.
     ---Cash for new characters comes from tfc-accounts (cash default), not from here.
@@ -39,6 +40,9 @@ InventoryConfig = {
 
     ---Give: drag an item onto "Give" to hand it to the closest player within this many metres.
     GiveDistance = 3.0,
+
+    ---How close police must stay to a cuffed or downed player while searching them (metres).
+    SearchDistance = 3.0,
 
     ---Ground drops: size of a drop, how close you must be to open it, how long an untouched
     ---drop lasts (minutes), and the prop shown on the ground (a marker is used if it can't load).

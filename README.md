@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 6d (shops and the in-game shop manager)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 7 (police, EMS, admin tools)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -30,6 +30,9 @@ Status: **phase 6d (shops and the in-game shop manager)**. Phases 1-4 are done; 
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
   tfc-shops/          -- stores, dealers, armories; buy/sell, stock, admin shop manager (NUI)
+  tfc-medical/        -- downed state, EMS revive/heal, hospital respawn (NUI overlay)
+  tfc-police/         -- cuffs, escort, vehicles, search, fines, jail
+  tfc-admin/          -- admin menu, item browser, noclip, spectate, teleports (NUI)
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -48,6 +51,9 @@ Status: **phase 6d (shops and the in-game shop manager)**. Phases 1-4 are done; 
    ensure tfc-accounts
    ensure tfc-jobs
    ensure tfc-shops
+   ensure tfc-medical
+   ensure tfc-police
+   ensure tfc-admin
    ensure tfc-hud
    ensure tfc-example
 
@@ -60,6 +66,67 @@ Status: **phase 6d (shops and the in-game shop manager)**. Phases 1-4 are done; 
    The old per-command lines (`command.givemoney`, `command.setjob`, ...) are no longer needed and can be removed.
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
+
+## Keys
+
+| Key | What | Who |
+| --- | --- | --- |
+| Tab | Inventory | everyone |
+| 1-5 | Hotbar | everyone |
+| F6 | Job menu (police / EMS actions on the closest player) | on-duty police, EMS |
+| F2 | Noclip | admins |
+| F10 | Admin menu | admins |
+
+All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
+anyone who had F2 bound to the old inventory gets Tab automatically.
+
+## Check that phase 7 works (police, EMS, admin)
+
+Ensure `tfc-medical`, `tfc-police` and `tfc-admin` (after `tfc-shops`). `tfc_police_records` is created automatically.
+The F6 menu, fine/jail dialogs and progress bars use ox_lib; without it, use the chat commands.
+
+**Paychecks** are now paid on the clock: every 15 minutes (HH:00, :15, :30, :45 server time) to everyone who is working at
+that moment, with no minimum playtime. The console logs `payroll: N paycheck(s)`.
+
+**Death and EMS** (`tfc-medical/config.lua`)
+
+| Do | Expect |
+| --- | --- |
+| Die (fall, get shot) | You go down instead, and are told how many EMS are on duty. Inventory and hotbar are blocked |
+| Press **G** | On-duty EMS get a flashing blip and waypoint; you're told how many EMS are on duty |
+| No EMS on duty: wait 60 s, press **E** | Fade to the nearest hospital, full health, no charge |
+| EMS on duty: after 2:30, press **E** | Early respawn for $1,000 (bank, then credit). Can't afford it: wait for the free one |
+| EMS on duty: after 5:00, press **E** | Free respawn. (If EMS clock out while you're down, the 60 s no-EMS rule applies) |
+| As EMS on duty, F6 > Revive next to a downed player (or `/revive`) | 8 s CPR, they get up with 50% health |
+| F6 > Treat wounds (or `/heal`) | 5 s, they're at full health |
+| Disconnect while down, reconnect | Down again with a full timer (no combat logging) |
+| Admin: `/revive [id]`, `/heal [id]` | Instant, any distance, full health |
+
+**Police** (`tfc-police/config.lua`), all as `police` on duty, from F6 or the commands:
+
+| Do | Expect |
+| --- | --- |
+| Cuff / uncuff (`/cuff [id]`) | Suspect's hands behind back; can walk but not run, jump, fight, use inventory or get in cars |
+| Escort (`/escort [id]`) | Cuffed or downed player is held next to you; again to let go |
+| Put in vehicle (`/seat [id]`) / Take out (`/unseat [id]`) | Into the closest vehicle's back seat / out of their vehicle |
+| Search (`/search [id]`) | Their inventory opens next to yours; take weapons, drugs, cash |
+| Issue fine (`/fine id amount reason`) | Paid from bank; what bank can't cover goes on credit (to its -$2,500 limit) |
+| Send to jail (`/jail id minutes reason`, cuffed) | Teleported into Bolingbroke with a countdown; walking out puts them back; released at the gate |
+| Reconnect while jailed | Time left is kept; back in jail. `/jailtime` shows it. `/unjail id` (police or admin) releases |
+
+Every fine, jail and early release is in `tfc_police_records`.
+
+**Admin** (`tfc.admin`)
+
+| Do | Expect |
+| --- | --- |
+| **F2** (or `/noclip`) | Fly: WASD + mouse, Space/Ctrl up/down, Shift faster, mouse wheel speed. Invisible to others. F2 again lands you |
+| **F10** (or `/admin`) | Players tab: everyone online with job, status (down, cuffed, jailed, frozen); Go to, Bring, Spectate, Revive, Heal, Freeze, Give item, Kick |
+| `/items` | Item browser: every item with its picture, search and categories; give any amount to yourself or a player |
+| Spectate (menu or `/spectate id`) | Watch them; Backspace or `/spectate` to come back to where you were |
+| `/tpm`, `/tp x y [z]`, `/goto id`, `/bring id`, `/back` | Teleports; `/back` returns to where you were before the last one |
+
+Hospital, jail and release positions are in the configs; adjust them if one is slightly off on your map.
 
 ## Check that phase 6d works (shops)
 
@@ -128,7 +195,7 @@ Effects, amounts and durations are set per item in `items.lua` (`effect = { heal
 
 ## Check that phase 6b works (drops, trunks, gloveboxes, giving)
 
-F2 opens your inventory plus whatever is around you:
+Tab opens your inventory plus whatever is around you:
 
 | Where you are | Second panel |
 | --- | --- |
@@ -139,10 +206,10 @@ F2 opens your inventory plus whatever is around you:
 | Who | Do | Expect |
 | --- | --- | --- |
 | You | Open on foot, drag water to the Ground panel | A bag appears on the ground |
-| Second player | Walk to the bag, F2 | Same ground panel; take the water and the bag disappears once both close |
+| Second player | Walk to the bag, Tab | Same ground panel; take the water and the bag disappears once both close |
 | You | Drop cash on the ground | HUD cash goes down; `tfc_transactions` shows "moved to Ground" |
-| You | Stand at a car's trunk, F2, store items, close, come back | Items are still there (saved by plate) |
-| You | Sit in the car, F2 | Glovebox instead of trunk |
+| You | Stand at a car's trunk, Tab, store items, close, come back | Items are still there (saved by plate) |
+| You | Sit in the car, Tab | Glovebox instead of trunk |
 | You + second player standing close | Drag an item onto **Give** | They get it; both see a notification |
 | You | Walk away with a drop or trunk open, then move an item | "You cannot reach that" |
 
@@ -156,7 +223,7 @@ Open `tfc-inventory/html/index.html` in a browser to try the drag-and-drop with 
 | Where | Do | Expect |
 | --- | --- | --- |
 | Server console | Start the server | `inventory ready: 9 items`, `module accounts v0.2.0 ready` |
-| In game | Load a character, press **F2** | Inventory opens: phone, water, sandwiches and your cash as an item |
+| In game | Load a character, press **Tab** | Inventory opens: phone, water, sandwiches and your cash as an item |
 | In game | HUD | Cash still shows the same amount; it now *is* the cash item |
 | Inventory | Drag items; hold **Shift** (half) or **Ctrl** (one), or type an amount | Moves, splits, stacks and swaps |
 | Inventory | Double-click or right-click water | Water used (one fewer) |
@@ -167,7 +234,7 @@ Open `tfc-inventory/html/index.html` in a browser to try the drag-and-drop with 
 Items are defined in `tfc-inventory/items.lua`; sizes and starting items in `config.lua`. Item images go in
 `tfc-inventory/html/images/<item>.png` (items without one show a lettered tile).
 
-**Keys:** F2 opens the inventory and 1-5 use hotbar slots. Both can be rebound in GTA's Settings > Key Bindings > FiveM.
+**Keys:** Tab opens the inventory and 1-5 use hotbar slots. Both can be rebound in GTA's Settings > Key Bindings > FiveM.
 GTA's weapon wheel and weapon keys are turned off (`Weapons.DisableWeaponWheel` in config).
 
 **Cash:** with `CashItem = true` in `tfc-accounts/config.lua`, cash is an inventory item. Existing cash balances move
@@ -196,11 +263,11 @@ Jobs, ranks and pay are in `tfc-jobs/config.lua` (unemployed, police, ambulance,
 
 | Where | Do | Expect |
 | --- | --- | --- |
-| Server console | Start the server | `module jobs v0.2.1 ready`, `jobs ready: 5 jobs, paycheck every 15 min` |
+| Server console | Start the server | `module jobs v0.2.1 ready`, `jobs ready: 5 jobs, paycheck every 15 min on the clock` |
 | In game | Load a character | HUD job line: "Unemployed" (no duty dot) |
 | In game | `/setjob me police 5` | HUD: "LSPD · Chief of Police" with a grey dot (off duty) |
 | In game | `/duty` | Dot turns green; `/duty` again turns it grey |
-| In game | Stay on duty 15 minutes | Bank +$850 and a "Paycheck: $850 deposited to your bank" notice. `/job` shows minutes to the next one |
+| In game | Be on duty at the next quarter hour (HH:00, :15, :30, :45 server time) | Bank +$850 and a "Paycheck: $850 deposited to your bank" notice. `/job` shows minutes to the next one |
 | In game | `/job` | Your job, rank, duty and pay |
 | Second player | `/hire <their id> 1`, `/promote`, `/demote`, `/fire` | Works for ranks below yours; refused at or above your rank |
 | Reconnect | Rejoin | Same job and rank; duty starts off |
@@ -349,6 +416,17 @@ Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 Server hooks: `shopPurchase(source, shopId, item, count, total, payment)`, `shopSale(source, shopId, item, count, total, account)`.
 Admin: `/shops`.
 
+### Medical, police, admin (phase 7, server exports)
+
+| Resource | Call | Notes |
+| --- | --- | --- |
+| `tfc-medical` | `IsDown(src)`, `Revive(src, full?)`, `Heal(src)` | hooks `playerDowned(src)`, `playerRevived(src, by)` |
+| `tfc-police` | `IsCuffed(src)`, `IsJailed(src)`, `Jail(src, minutes, reason?)`, `Release(src)` | hooks `playerCuffed`, `playerFined`, `playerJailed`, `playerReleased` |
+| `tfc-inventory` | `OpenSearch(viewer, target)`, `ForceClose(src)` | search only works on cuffed / downed players |
+| `tfc-jobs` (client) | `AddJobAction({ id, jobs, label, icon, event })` | adds an entry to the F6 job menu |
+
+Public state bags: `tfc:down`, `tfc:cuffed`, `tfc:escortedBy`, `tfc:jailed`, `tfc:frozen`, `tfc:admin`.
+
 ### Permissions (phase 4c)
 
 `TFC.HasPermission(src, 'tfc.admin')`, `TFC.IsAdmin(src)` (server, any module), plus `exports['tfc-core']:HasPermission` /
@@ -374,7 +452,8 @@ suggestions (only shown to players allowed to use it) and an automatic usage mes
 `TFC.ResolveTarget(src, arg)` turns `"me"` or an ID into an online player's source.
 
 UI: `TFC.UI.Notify(data)` on the client, `TFC.UI.Notify(src, data)` on the server; `TFC.UI.ShowPrompt('[E] ...')` /
-`TFC.UI.HidePrompt()` on the client. All use ox_lib if it's running, GTA's own UI otherwise.
+`TFC.UI.HidePrompt()`, `TFC.UI.Menu(menu)`, `TFC.UI.Input(heading, rows)`, `TFC.UI.Progress(data)` on the client.
+All use ox_lib if it's running, GTA's own UI otherwise (menus and dialogs need ox_lib).
 
 Saving: changed characters are saved in one transaction every `Config.SaveInterval` seconds (default 300),
 and always on character switch, disconnect, and txAdmin shutdown.

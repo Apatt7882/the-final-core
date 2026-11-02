@@ -11,6 +11,7 @@
 --                  screen = { name, seconds } (GTA screen effect), anim = { dict, clip, ms } or { scenario, ms }
 --   transform    using it turns items into others: { take = { item = n, ... }, give = { item = n, ... } }
 --   close        close the inventory when used
+--   category     'general' (default), 'drug', 'weapon', 'ammo': groups items in the admin item browser
 --
 -- Weapons (`weapon = true`) and ammo are below; their rules are in server/weapons.lua.
 -- Other resources can add items at runtime: exports['tfc-inventory']:RegisterItem(name, def)
@@ -47,52 +48,61 @@ Items = {
 
     -- Drugs -------------------------------------------------------------------------------------
     weed_bag = {
+        category = 'drug',
         label = 'Bag of Weed', weight = 30, stack = true, maxStack = 50,
         description = 'A dime bag. Use with rolling papers to roll two joints.',
         usable = true,
         transform = { take = { weed_bag = 1, rolling_papers = 1 }, give = { joint = 2 } },
     },
     rolling_papers = {
+        category = 'drug',
         label = 'Rolling Papers', weight = 5, stack = true, maxStack = 50,
         description = 'For rolling joints.',
     },
     joint = {
+        category = 'drug',
         label = 'Joint', weight = 3, stack = true, maxStack = 50,
         description = 'Takes the edge off. Slowly restores a little health.',
         usable = true, consume = 1, close = true,
         effect = { heal = 10, screen = { 'DrugsMichaelAliensFight', 30 }, anim = { scenario = 'WORLD_HUMAN_SMOKING_POT', ms = 6000 } },
     },
     coke_bag = {
+        category = 'drug',
         label = 'Bag of Coke', weight = 10, stack = true, maxStack = 50,
         description = 'Brief burst of speed.',
         usable = true, consume = 1, close = true,
         effect = { sprint = { 1.2, 30 }, screen = { 'Rampage', 30 }, anim = { dict = 'switch@trevor@trev_smoking_meth', clip = 'trev_smoking_meth_loop', ms = 3000 } },
     },
     coke_brick = {
+        category = 'drug',
         label = 'Brick of Coke', weight = 1000, stack = true, maxStack = 10,
         description = 'Packed for distribution. Use to break it down into 20 bags.',
         usable = true,
         transform = { take = { coke_brick = 1 }, give = { coke_bag = 20 } },
     },
     crack_rock = {
+        category = 'drug',
         label = 'Crack Rock', weight = 5, stack = true, maxStack = 50,
         description = 'Short, sharp high. A little speed and a little health.',
         usable = true, consume = 1, close = true,
         effect = { heal = 5, sprint = { 1.15, 20 }, screen = { 'DrugsTrevorClownsFight', 20 }, anim = { dict = 'switch@trevor@trev_smoking_meth', clip = 'trev_smoking_meth_loop', ms = 3000 } },
     },
     meth_bag = {
+        category = 'drug',
         label = 'Bag of Meth', weight = 10, stack = true, maxStack = 50,
         description = 'You feel unstoppable. Adds some armor.',
         usable = true, consume = 1, close = true,
         effect = { armor = 25, screen = { 'DMT_flight', 45 }, anim = { dict = 'switch@trevor@trev_smoking_meth', clip = 'trev_smoking_meth_loop', ms = 3000 } },
     },
     oxy = {
+        category = 'drug',
         label = 'Oxy', weight = 2, stack = true, maxStack = 50,
         description = 'Prescription painkiller. Restores health.',
         usable = true, consume = 1, close = true,
         effect = { heal = 30, screen = { 'DrugsDrivingIn', 20 }, anim = { dict = 'mp_suicide', clip = 'pill', ms = 2500 } },
     },
     ecstasy = {
+        category = 'drug',
         label = 'Ecstasy', weight = 2, stack = true, maxStack = 50,
         description = 'Everything is wonderful. Adds a little armor.',
         usable = true, consume = 1, close = true,

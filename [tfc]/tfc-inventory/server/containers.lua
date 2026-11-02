@@ -4,6 +4,7 @@
 --   drop:<n>        ground bag, in memory only; removed when empty or after Drop.lifetime minutes
 --   trunk:<PLATE>   saved by plate; empty ones are deleted
 --   glove:<PLATE>   saved by plate; only reachable from inside the vehicle
+--   player:<id>     another player's inventory, while searching them (phase 7, tfc-police)
 
 local Cfg = InventoryConfig
 
@@ -11,6 +12,10 @@ local Cfg = InventoryConfig
 local open = {}
 ---@type table<integer, { veh: integer, door: boolean }|nil> vehicle info for an open trunk/glovebox
 local openVehicle = {}
+---@type table<integer, integer> source -> player they are searching
+local openPlayer = {}
+---@type table<integer, { target: integer, expires: integer }> searches another resource allowed
+local searchGrant = {}
 
 local nextDrop = 0
 
@@ -122,6 +127,7 @@ function InvSrv.closeSecondary(src)
     open[src] = nil
     local vehicle = openVehicle[src]
     openVehicle[src] = nil
+    openPlayer[src] = nil
     if not id then return end
 
     local inv = Inv.Get(id)
@@ -161,6 +167,23 @@ function InvSrv.openSecondary(src, context)
         return inv
     end
 
+    if context.kind == 'player' then
+        local target = math.tointeger(tonumber(context.target))
+        local grant = searchGrant[src]
+        searchGrant[src] = nil -- one use
+        if not target or not grant or grant.target ~= target or grant.expires < os.time() then
+            return nil, 'you can\'t search them'
+        end
+        local there = pedCoords(target)
+        if not there or dist(here, there) > Cfg.SearchDistance then return nil, 'they are too far away' end
+        if not InvSrv.searchable(target) then return nil, 'they need to be cuffed or down' end
+        local inv = InvSrv.ensure(target)
+        if not inv then return nil, 'their inventory is not loaded' end
+        attach(src, inv)
+        openPlayer[src] = target
+        return inv
+    end
+
     if context.kind == 'trunk' then
         local veh = vehicleFromNet(context.net)
         if not veh then return nil end
@@ -192,7 +215,11 @@ function InvSrv.secondaryOf(src)
     local here = pedCoords(src)
     if not here then return nil end
 
-    if inv.type == 'drop' then
+    if inv.type == 'player' then
+        local target = openPlayer[src]
+        local there = target and pedCoords(target)
+        if not there or dist(here, there) > Cfg.SearchDistance + 1.0 or not InvSrv.searchable(target) then return nil end
+    elseif inv.type == 'drop' then
         if dist(here, inv.coords) > Cfg.Drop.radius + 1.0 then return nil end
     elseif inv.type == 'trunk' or inv.type == 'glovebox' then
         local v = openVehicle[src]
@@ -220,6 +247,31 @@ function InvSrv.afterTransfer(_, from, to)
     end
 end
 
+-- Searching another player ---------------------------------------------------------------------------
+
+---Only cuffed or downed players can be searched.
+function InvSrv.searchable(target)
+    local state = Player(target).state
+    return state['tfc:cuffed'] == true or state['tfc:down'] == true
+end
+
+---Called by another resource (e.g. tfc-police) after its own checks: opens `target`'s
+---inventory next to `viewer`'s. The inventory still re-checks distance and cuffs/down.
+exports('OpenSearch', function(viewer, target)
+    viewer, target = math.tointeger(tonumber(viewer)), math.tointeger(tonumber(target))
+    if not viewer or not target or viewer == target then return false, 'invalid player' end
+    if not InvSrv.searchable(target) then return false, 'they need to be cuffed or down' end
+    searchGrant[viewer] = { target = target, expires = os.time() + 15 }
+    TriggerClientEvent('tfc-inventory:client:openSearch', viewer, target)
+    return true
+end)
+
+---Close every inventory window a player has open (e.g. they were just cuffed).
+exports('ForceClose', function(src)
+    InvSrv.closeSecondary(src)
+    TriggerClientEvent('tfc-inventory:client:forceClose', src)
+end)
+
 -- Give ---------------------------------------------------------------------------------------------
 
 ---Closest loaded player within GiveDistance (other than src).
@@ -240,6 +292,8 @@ local function closestPlayer(src)
 end
 
 TFC.Callback.Register('inventory:give', function(src, slot, count)
+    local why = InvSrv.blocked(src)
+    if why then return { ok = false, error = why } end
     local from = InvSrv.ensure(src)
     slot = math.tointeger(tonumber(slot))
     local item = from and slot and from.items[slot]

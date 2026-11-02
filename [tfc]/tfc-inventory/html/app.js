@@ -202,7 +202,7 @@ function update(inv) {
 
 document.addEventListener('keydown', (e) => {
     if ($('screen').classList.contains('hidden')) return;
-    if (e.key === 'Escape' || e.key === 'F2' || (e.key === 'Tab' && document.activeElement !== $('amount'))) {
+    if (e.key === 'Escape' || e.key === 'Tab') {
         e.preventDefault();
         close();
     }

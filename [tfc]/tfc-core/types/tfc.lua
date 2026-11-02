@@ -39,6 +39,9 @@
 ---@field Notify fun(srcOrData: integer|TFCNotify|string, data?: TFCNotify|string) client: Notify(data); server: Notify(src, data)
 ---@field ShowPrompt fun(text: string) client only: show an interaction prompt, e.g. "[E] Open shop"
 ---@field HidePrompt fun() client only: hide the interaction prompt
+---@field Menu fun(menu: { id: string, title: string, options: table[] }): boolean client only: context menu (ox_lib)
+---@field Input fun(heading: string, rows: table[]): table|nil client only: input dialog (ox_lib)
+---@field Progress fun(data: { duration: integer, label: string, anim?: table, canCancel?: boolean }): boolean client only
 
 ---@class TFC
 ---@field UI TFCUI

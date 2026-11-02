@@ -22,8 +22,8 @@ CreateThread(function()
 
     local count = 0
     for _ in pairs(Jobs) do count = count + 1 end
-    TFC.RegisterModule({ name = 'jobs', version = '0.2.1' }, function()
-        TFC.Log.Info('jobs ready: %d jobs, paycheck every %d min', count, JobsConfig.PaycheckMinutes)
+    TFC.RegisterModule({ name = 'jobs', version = '0.2.2' }, function()
+        TFC.Log.Info('jobs ready: %d jobs, paycheck every %d min on the clock', count, JobsConfig.PaycheckMinutes)
     end)
 
     for _, src in ipairs(TFC.GetPlayers()) do

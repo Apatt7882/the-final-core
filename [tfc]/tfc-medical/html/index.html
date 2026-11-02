@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Medical</title>
+<style>
+    :root {
+        --bg: rgba(14, 16, 20, 0.88);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #f2f3f5;
+        --muted: #9aa1ab;
+        --accent: #e8a33d;
+        --danger: #e5484d;
+        --u: calc(100vh / 1080);
+        font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+    .hidden { display: none !important; }
+
+    #vignette {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse at center, rgba(120, 0, 0, 0) 40%, rgba(90, 0, 0, 0.55) 100%);
+        pointer-events: none;
+    }
+
+    #card {
+        position: fixed;
+        left: 50%;
+        bottom: calc(110 * var(--u));
+        transform: translateX(-50%);
+        min-width: calc(420 * var(--u));
+        padding: calc(18 * var(--u)) calc(26 * var(--u));
+        border: 1px solid var(--border);
+        border-radius: calc(14 * var(--u));
+        background: var(--bg);
+        color: var(--text);
+        text-align: center;
+        box-shadow: 0 calc(16 * var(--u)) calc(40 * var(--u)) rgba(0, 0, 0, 0.45);
+    }
+    .kicker {
+        margin: 0;
+        font-size: calc(13 * var(--u));
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--danger);
+    }
+    h1 { margin: calc(4 * var(--u)) 0 calc(10 * var(--u)); font-size: calc(30 * var(--u)); font-weight: 600; }
+    .ems { margin: 0 0 calc(10 * var(--u)); font-size: calc(15 * var(--u)); font-weight: 600; color: #4cc38a; }
+    .ems.none { color: var(--accent); }
+    .timer { font-size: calc(17 * var(--u)); line-height: 1.5; color: var(--muted); }
+    .timer strong { color: var(--text); font-variant-numeric: tabular-nums; }
+    .keys { display: flex; justify-content: center; gap: calc(18 * var(--u)); margin-top: calc(14 * var(--u)); font-size: calc(16 * var(--u)); color: var(--muted); }
+    .key {
+        display: inline-grid;
+        place-items: center;
+        min-width: calc(26 * var(--u));
+        height: calc(26 * var(--u));
+        margin-right: calc(6 * var(--u));
+        padding: 0 calc(6 * var(--u));
+        border-radius: calc(6 * var(--u));
+        background: var(--accent);
+        color: #1a1206;
+        font-weight: 700;
+    }
+    .bar { height: calc(4 * var(--u)); margin-top: calc(14 * var(--u)); border-radius: 99px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+    .bar div { height: 100%; background: var(--danger); transition: width 1s linear; }
+</style>
+</head>
+<body>
+    <div id="root" class="hidden">
+        <div id="vignette"></div>
+        <div id="card">
+            <p class="kicker">You are down</p>
+            <h1 id="title">Wait for EMS</h1>
+            <p class="ems" id="ems"></p>
+            <div class="timer" id="timer"></div>
+            <div class="bar"><div id="bar"></div></div>
+            <div class="keys">
+                <span><span class="key">G</span>Call EMS</span>
+                <span id="respawn" class="hidden"><span class="key">E</span><span id="respawn-text">Respawn at hospital</span></span>
+            </div>
+        </div>
+    </div>
+<script>
+    const $ = (id) => document.getElementById(id);
+    const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const money = (n) => '$' + Number(n).toLocaleString('en-US');
+
+    // m.ems = EMS on duty; m.option = { now, fee, paidIn?, freeIn?, total } (see MedicalConfig.RespawnOption)
+    function render(m) {
+        const o = m.option || { now: false, fee: 0, total: 1 };
+        const ems = m.ems || 0;
+        $('ems').textContent = ems === 0 ? 'No EMS on duty' : `${ems} EMS on duty`;
+        $('ems').className = 'ems' + (ems === 0 ? ' none' : '');
+
+        const lines = [];
+        if (!o.now) {
+            $('title').textContent = ems === 0 ? 'Hang in there' : 'Wait for EMS';
+            if (o.paidIn !== undefined && o.paidIn !== null) lines.push(`Early respawn (${money(o.fee)}) in <strong>${fmt(o.paidIn)}</strong>`);
+            if (o.freeIn !== undefined && o.freeIn !== null) lines.push(`Free respawn in <strong>${fmt(o.freeIn)}</strong>`);
+        } else if (o.fee > 0) {
+            $('title').textContent = 'Respawn available';
+            lines.push(`Free respawn in <strong>${fmt(o.freeIn || 0)}</strong>, or keep waiting for EMS.`);
+        } else {
+            $('title').textContent = 'You can respawn';
+            lines.push(ems === 0 ? 'No charge while no EMS are on duty.' : 'No charge. Or keep waiting for EMS.');
+        }
+        $('timer').innerHTML = lines.join('<br>');
+
+        $('respawn').classList.toggle('hidden', !o.now);
+        $('respawn-text').textContent = o.fee > 0 ? `Respawn now (${money(o.fee)})` : 'Respawn at hospital (free)';
+
+        const left = o.freeIn || 0;
+        $('bar').style.width = `${Math.max(0, Math.min(100, (left / Math.max(1, o.total)) * 100))}%`;
+    }
+
+    window.addEventListener('message', (e) => {
+        const m = e.data || {};
+        if (m.action === 'down') {
+            $('root').classList.remove('hidden');
+            render(m);
+        } else if (m.action === 'tick') {
+            render(m);
+        } else if (m.action === 'up') {
+            $('root').classList.add('hidden');
+        }
+    });
+</script>
+</body>
+</html>

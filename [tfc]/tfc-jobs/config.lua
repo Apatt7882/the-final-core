@@ -2,7 +2,9 @@ JobsConfig = {
     ---Job every new character starts with, and the one people go back to when fired.
     DefaultJob = 'unemployed',
 
-    ---Minutes of (on-duty) time between paychecks. Paid into the bank by the government.
+    ---Paychecks are paid on the clock every this many minutes (server time): 15 = HH:00, HH:15,
+    ---HH:30, HH:45. Everyone working at that moment is paid into their bank. Use a number
+    ---that divides 60 (5, 10, 15, 20, 30, 60).
     PaycheckMinutes = 15,
 
     ---Pay people in duty jobs while they're off duty? Usually false.
@@ -10,6 +12,9 @@ JobsConfig = {
 
     ---Bosses can set each rank's pay within the job's payRange (or this default).
     DefaultPayRange = { min = 0, max = 1000 },
+
+    ---Job menu (police, EMS actions on the closest player): default key and reach in metres.
+    JobMenu = { Key = 'F6', Distance = 3.0 },
 
     ---Boss Menu: chat command, how close a player must be to be hired (metres),
     ---how many ranks a job may have, and how many log entries to show.
