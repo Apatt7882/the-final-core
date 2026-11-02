@@ -1,0 +1,254 @@
+:root {
+    --bg: rgba(14, 16, 20, 0.94);
+    --slot: rgba(255, 255, 255, 0.05);
+    --slot-hover: rgba(255, 255, 255, 0.09);
+    --border: rgba(255, 255, 255, 0.09);
+    --text: #f2f3f5;
+    --muted: #9aa1ab;
+    --accent: #e8a33d;
+    --danger: #e5484d;
+    --u: calc(100vh / 1080);
+    --slot-size: calc(92 * var(--u));
+    font-family: "Segoe UI", Inter, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: transparent;
+    color: var(--text);
+    overflow: hidden;
+    user-select: none;
+}
+
+.hidden { display: none !important; }
+
+#screen {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.6));
+}
+
+.layout {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(20 * var(--u));
+}
+
+/* Panels ------------------------------------------------------------------------------- */
+
+.panel {
+    padding: calc(20 * var(--u));
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: calc(14 * var(--u));
+    box-shadow: 0 calc(20 * var(--u)) calc(50 * var(--u)) rgba(0, 0, 0, 0.45);
+}
+
+.panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: calc(24 * var(--u));
+    margin-bottom: calc(16 * var(--u));
+}
+
+.kicker {
+    margin: 0 0 calc(4 * var(--u));
+    font-size: calc(12 * var(--u));
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.panel-title { margin: 0; font-size: calc(20 * var(--u)); font-weight: 600; }
+
+.weight { display: flex; flex-direction: column; align-items: flex-end; gap: calc(6 * var(--u)); }
+.weight-text { font-size: calc(13 * var(--u)); color: var(--muted); font-variant-numeric: tabular-nums; }
+.weight-track { display: block; width: calc(160 * var(--u)); height: calc(6 * var(--u)); border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.weight-fill { display: block; height: 100%; background: var(--accent); transition: width 150ms; }
+.weight-fill.full { background: var(--danger); }
+
+/* Grid --------------------------------------------------------------------------------- */
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(5, var(--slot-size));
+    gap: calc(8 * var(--u));
+    max-height: calc(var(--slot-size) * 6 + 8 * var(--u) * 5);
+    overflow-y: auto;
+    padding-right: calc(4 * var(--u));
+}
+
+.grid::-webkit-scrollbar { width: 6px; }
+.grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.slot {
+    position: relative;
+    width: var(--slot-size);
+    height: var(--slot-size);
+    border-radius: calc(10 * var(--u));
+    background: var(--slot);
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+}
+
+.slot.filled { cursor: grab; }
+.slot.filled:hover { background: var(--slot-hover); }
+.slot.drop-target { border-color: var(--accent); background: rgba(232, 163, 61, 0.12); }
+.slot.dragging { opacity: 0.35; }
+
+.slot .key {
+    position: absolute;
+    top: calc(6 * var(--u));
+    left: calc(8 * var(--u));
+    font-size: calc(12 * var(--u));
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.slot .count {
+    position: absolute;
+    top: calc(6 * var(--u));
+    right: calc(8 * var(--u));
+    font-size: calc(13 * var(--u));
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.slot .label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(6 * var(--u));
+    padding: 0 calc(6 * var(--u));
+    text-align: center;
+    font-size: calc(12 * var(--u));
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.slot .label.money { color: #6fd39f; font-weight: 600; }
+
+.slot img {
+    width: 58%;
+    height: 58%;
+    object-fit: contain;
+    pointer-events: none;
+    margin-bottom: calc(10 * var(--u));
+}
+
+.tile {
+    width: 54%;
+    height: 54%;
+    margin-bottom: calc(10 * var(--u));
+    display: grid;
+    place-items: center;
+    border-radius: calc(10 * var(--u));
+    background: rgba(232, 163, 61, 0.14);
+    color: var(--accent);
+    font-size: calc(18 * var(--u));
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+}
+
+/* Controls ------------------------------------------------------------------------------- */
+
+.controls {
+    align-self: center;
+    width: calc(150 * var(--u));
+    display: flex;
+    flex-direction: column;
+    gap: calc(14 * var(--u));
+}
+
+.amount { display: flex; flex-direction: column; gap: calc(6 * var(--u)); font-size: calc(13 * var(--u)); color: var(--muted); }
+
+.amount input {
+    height: calc(42 * var(--u));
+    padding: 0 calc(12 * var(--u));
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: calc(8 * var(--u));
+    color: var(--text);
+    font: inherit;
+    font-size: calc(16 * var(--u));
+    text-align: center;
+    color-scheme: dark;
+}
+
+.amount input:focus { outline: none; border-color: var(--accent); }
+
+.help { margin: 0; font-size: calc(12 * var(--u)); line-height: 1.5; color: var(--muted); text-align: center; }
+.help b { color: var(--text); font-weight: 600; }
+
+/* Tooltip, ghost, toast ---------------------------------------------------------------------- */
+
+.tooltip {
+    position: fixed;
+    z-index: 20;
+    max-width: calc(280 * var(--u));
+    padding: calc(12 * var(--u)) calc(14 * var(--u));
+    background: #15181d;
+    border: 1px solid var(--border);
+    border-radius: calc(10 * var(--u));
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    font-size: calc(13 * var(--u));
+    pointer-events: none;
+}
+
+.tooltip .t-name { font-size: calc(15 * var(--u)); font-weight: 600; }
+.tooltip .t-desc { margin-top: calc(4 * var(--u)); color: var(--muted); line-height: 1.45; }
+.tooltip .t-meta { margin-top: calc(8 * var(--u)); display: grid; grid-template-columns: auto 1fr; gap: calc(3 * var(--u)) calc(10 * var(--u)); }
+.tooltip .t-meta dt { color: var(--muted); }
+.tooltip .t-meta dd { margin: 0; }
+.tooltip .t-use { margin-top: calc(8 * var(--u)); color: var(--accent); font-size: calc(12 * var(--u)); }
+
+.ghost {
+    position: fixed;
+    z-index: 30;
+    width: var(--slot-size);
+    height: var(--slot-size);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    opacity: 0.9;
+}
+
+.ghost .slot { border-color: var(--accent); background: rgba(20, 22, 26, 0.95); }
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(60 * var(--u));
+    transform: translateX(-50%);
+    padding: calc(10 * var(--u)) calc(16 * var(--u));
+    background: #15181d;
+    border: 1px solid rgba(229, 72, 77, 0.6);
+    border-radius: calc(10 * var(--u));
+    font-size: calc(14 * var(--u));
+}
+
+/* Hotbar flash ------------------------------------------------------------------------------- */
+
+.hotbar {
+    position: fixed;
+    left: 50%;
+    bottom: calc(40 * var(--u));
+    transform: translateX(-50%);
+    display: flex;
+    gap: calc(8 * var(--u));
+    transition: opacity 250ms;
+}
+
+.hotbar.fade { opacity: 0; }
+.hotbar .slot { background: rgba(14, 16, 20, 0.8); }
+.hotbar .slot.used { border-color: var(--accent); }

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Inventory</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="screen" class="hidden">
+        <div class="layout">
+            <section class="panel" id="panel-player" aria-label="Your inventory">
+                <header class="panel-head">
+                    <div>
+                        <p class="kicker">Inventory</p>
+                        <h1 class="panel-title" data-title></h1>
+                    </div>
+                    <div class="weight">
+                        <span class="weight-text" data-weight-text></span>
+                        <span class="weight-track"><span class="weight-fill" data-weight-fill></span></span>
+                    </div>
+                </header>
+                <div class="grid" data-grid></div>
+            </section>
+
+            <aside class="controls" aria-label="Controls">
+                <label class="amount">Amount
+                    <input id="amount" type="number" min="0" step="1" placeholder="All">
+                </label>
+                <p class="help">Drag to move. <b>Shift</b> moves half, <b>Ctrl</b> moves one. Double-click or right-click to use.</p>
+            </aside>
+
+            <section class="panel hidden" id="panel-secondary" aria-label="Other inventory">
+                <header class="panel-head">
+                    <div>
+                        <p class="kicker" data-kicker></p>
+                        <h1 class="panel-title" data-title></h1>
+                    </div>
+                    <div class="weight">
+                        <span class="weight-text" data-weight-text></span>
+                        <span class="weight-track"><span class="weight-fill" data-weight-fill></span></span>
+                    </div>
+                </header>
+                <div class="grid" data-grid></div>
+            </section>
+        </div>
+
+        <div class="tooltip hidden" id="tooltip" role="tooltip"></div>
+        <div class="ghost hidden" id="ghost"></div>
+        <div class="toast hidden" id="toast" role="status"></div>
+    </div>
+
+    <!-- Hotbar flash when using slots 1-5 with the inventory closed -->
+    <div class="hotbar hidden" id="hotbar"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

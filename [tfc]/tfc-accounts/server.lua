@@ -20,6 +20,18 @@ local loadingNow = {}
 local tablesReady = false
 local Load -- defined below; used by the startup thread
 
+-- Cash as an inventory item ----------------------------------------------------------------
+local INV = 'tfc-inventory'
+
+local function cashItem()
+    return AccountsConfig.CashItem == true and GetResourceState(INV) == 'started'
+end
+
+---Players whose cash item is being changed by this resource right now (so the
+---inventory's itemCountChanged hook isn't logged twice).
+---@type table<integer, boolean>
+local ownCashChange = {}
+
 -- Schema -------------------------------------------------------------------------
 
 local SCHEMA = {
@@ -53,7 +65,7 @@ CreateThread(function()
     end
     tablesReady = true
 
-    TFC.RegisterModule({ name = 'accounts', version = '0.1.2' }, function()
+    TFC.RegisterModule({ name = 'accounts', version = '0.2.0' }, function()
         TFC.Log.Info('accounts ready: %s', table.concat((function()
             local names = {}
             for name in pairs(Accounts) do names[#names + 1] = name end
@@ -129,6 +141,25 @@ Load = function(src)
             if Accounts[row.name] then balances[row.name] = math.tointeger(row.balance) or row.balance end
         end
 
+        if cashItem() then
+            -- On server start the inventory may still be loading; give it a moment.
+            local deadline = GetGameTimer() + 10000
+            while not exports['tfc-core']:IsModuleReady('inventory') and GetGameTimer() < deadline do Wait(100) end
+
+            -- Any cash still in the account (old characters, or the starting cash of new
+            -- ones) moves into the wallet once; then the item is the balance.
+            local stored = balances.cash or 0
+            if stored > 0 then
+                local moved = exports[INV]:AddItem(src, 'cash', stored, nil, nil, 'cash moved to wallet')
+                if moved then
+                    MySQL.update.await("UPDATE tfc_accounts SET balance = 0 WHERE character_id = ? AND name = 'cash'", { charId })
+                else
+                    TFC.Log.Warn('could not move $%d cash into player %d\'s inventory (full?); kept in account', stored, src)
+                end
+            end
+            balances.cash = exports[INV]:GetItemCount(src, 'cash')
+        end
+
         -- Still the same character? (they may have switched or left while we queried)
         local now = TFC.GetPlayer(src)
         if now and now.characterId == charId then
@@ -174,6 +205,25 @@ local function change(src, account, delta, reason)
 
     local entry = Load(src)
     if not entry then return false, 'player has no loaded character' end
+
+    if account == 'cash' and cashItem() then
+        ownCashChange[src] = true
+        local ok, err
+        if delta > 0 then
+            ok, err = exports[INV]:AddItem(src, 'cash', delta, nil, nil, reason)
+        else
+            ok, err = exports[INV]:RemoveItem(src, 'cash', -delta, nil, nil, reason)
+        end
+        ownCashChange[src] = nil
+
+        if not ok then
+            if delta < 0 then return false, 'not enough cash' end
+            return false, ('no room for cash (%s)'):format(err or 'inventory full')
+        end
+        if cache[src] ~= entry then return true, exports[INV]:GetItemCount(src, 'cash') end
+        entry.balances.cash = exports[INV]:GetItemCount(src, 'cash') - delta
+        return true, applied(src, entry, 'cash', delta, reason)
+    end
 
     local min, max = bounds(account)
     local affected = MySQL.update.await(
@@ -311,6 +361,15 @@ end)
 
 TFC.On('playerUnloaded', function(src)
     cache[src] = nil
+end)
+
+-- Cash item moved by the inventory itself (dropped, given, picked up, stashed...).
+TFC.On('itemCountChanged', function(src, name, count, delta, reason)
+    if name ~= 'cash' or ownCashChange[src] or not cashItem() then return end
+    local entry = cache[src]
+    if not entry then return end
+    entry.balances.cash = count - delta
+    applied(src, entry, 'cash', delta, reason ~= '' and reason or 'inventory')
 end)
 
 -- Commands --------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 4c (permissions + Boss Menu)**. Phases 1-3, 4a (accounts, HUD) and 4b (jobs) are done. See the design doc for the full plan.
+Status: **phase 6a (inventory core)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -28,6 +28,7 @@ Status: **phase 4c (permissions + Boss Menu)**. Phases 1-3, 4a (accounts, HUD) a
   tfc-accounts/       -- cash, bank and credit; transaction log
   tfc-hud/            -- date/time, money, job and location HUD (NUI)
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
+  tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -42,6 +43,7 @@ Status: **phase 4c (permissions + Boss Menu)**. Phases 1-3, 4a (accounts, HUD) a
    ensure ox_lib          # optional: nicer notifications; falls back to the GTA feed
    ensure tfc-core
    ensure tfc-multichar
+   ensure tfc-inventory
    ensure tfc-accounts
    ensure tfc-jobs
    ensure tfc-hud
@@ -56,6 +58,30 @@ Status: **phase 4c (permissions + Boss Menu)**. Phases 1-3, 4a (accounts, HUD) a
    The old per-command lines (`command.givemoney`, `command.setjob`, ...) are no longer needed and can be removed.
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
+
+## Check that phase 6a works (inventory)
+
+Open `tfc-inventory/html/index.html` in a browser to try the drag-and-drop with sample items.
+
+| Where | Do | Expect |
+| --- | --- | --- |
+| Server console | Start the server | `inventory ready: 9 items`, `module accounts v0.2.0 ready` |
+| In game | Load a character, press **F2** | Inventory opens: phone, water, sandwiches and your cash as an item |
+| In game | HUD | Cash still shows the same amount; it now *is* the cash item |
+| Inventory | Drag items; hold **Shift** (half) or **Ctrl** (one), or type an amount | Moves, splits, stacks and swaps |
+| Inventory | Double-click or right-click water | Water used (one fewer) |
+| In game | `/giveitem me bandage 5`, press **3** if it's in slot 3 | Hotbar flashes, bandage used, health goes up |
+| In game | `/givemoney me cash 100` | Cash item +$100, HUD +$100 |
+| Reconnect | Rejoin | Same items in the same slots |
+
+Items are defined in `tfc-inventory/items.lua`; sizes and starting items in `config.lua`. Item images go in
+`tfc-inventory/html/images/<item>.png` (items without one show a lettered tile).
+
+**Keys:** F2 opens the inventory and 1-5 use hotbar slots. Both can be rebound in GTA's Settings > Key Bindings > FiveM.
+Until inventory weapons (6c), 1-5 also still switch weapon categories.
+
+**Cash:** with `CashItem = true` in `tfc-accounts/config.lua`, cash is an inventory item. Existing cash balances move
+into each character's inventory the next time they load. Bank and credit are unchanged.
 
 ## Check that phase 4c works (permissions + Boss Menu)
 
@@ -204,6 +230,22 @@ Phase 3 adds: `exports['tfc-core']:DeleteCharacter(src, id)` and `GetConfig(key)
 Client: `exports['tfc-accounts']:GetBalance(account)`, `GetBalances()`, hook `moneyChanged(account, balance, delta, reason)`.
 Server hook: `moneyChanged(source, account, balance, delta, reason)`.
 Money changes are written to the database immediately (not batched), one atomic UPDATE each.
+
+### Inventory (phase 6a, `exports['tfc-inventory']`, server)
+
+`target` is a player's server ID or an inventory id.
+
+| Call | Returns |
+| --- | --- |
+| `AddItem(target, name, count, metadata?, slot?, reason?)` / `RemoveItem(...)` | ok, err |
+| `GetItemCount(target, name, metadata?)` / `HasItem(target, name, count?)` | number / bool |
+| `CanCarry(target, name, count, metadata?)` | ok, err |
+| `Search(target, name)` | `{ slot, count, metadata }[]` |
+| `SetMetadata(target, slot, metadata)` / `GetInventory(target)` / `ClearInventory(target, keep?)` | |
+| `RegisterItem(name, def)` / `GetItems()` | add items from other resources |
+
+Server hooks: `itemUsed(source, name, slot)`, `itemCountChanged(source, name, count, delta, reason)`.
+Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 
 ### Permissions (phase 4c)
 

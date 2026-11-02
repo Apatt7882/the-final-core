@@ -9,6 +9,11 @@ AccountsConfig = {
         credit = { label = 'Credit', default = 0,    min = -2500, max = 0 },
     },
 
+    ---Cash is a physical item in tfc-inventory (can be dropped, given, stolen, stored).
+    ---The cash balance, HUD and money commands keep working. Needs tfc-inventory running;
+    ---if it isn't, cash falls back to a normal account.
+    CashItem = true,
+
     ---Order Charge() tries accounts in when paying for something.
     ChargeOrder = { 'cash', 'bank', 'credit' },
 
