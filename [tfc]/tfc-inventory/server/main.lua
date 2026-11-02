@@ -34,14 +34,22 @@ local SCHEMA = [[
 
 -- Persistence ------------------------------------------------------------------------------
 
+local function isVehicle(inv)
+    return inv.type == 'trunk' or inv.type == 'glovebox'
+end
+
 local function saveQuery(inv)
+    -- Empty vehicle storage takes no space in the database.
+    if isVehicle(inv) and next(inv.items) == nil then
+        return { query = 'DELETE FROM tfc_inventories WHERE id = ?', values = { inv.id } }
+    end
     return {
         query = 'INSERT INTO tfc_inventories (id, items) VALUES (?, ?) ON DUPLICATE KEY UPDATE items = VALUES(items)',
         values = { inv.id, Inv.Serialize(inv) },
     }
 end
 
----Save every changed inventory in one transaction.
+---Save every changed inventory in one transaction (drops live in memory only).
 local function saveDirty(async)
     local queries = {}
     for _, inv in pairs(Inv.list) do
@@ -55,7 +63,7 @@ local function saveDirty(async)
 end
 
 local function saveOne(inv)
-    if not inv.dirty then return end
+    if not inv.dirty or inv.type == 'drop' then return end
     MySQL.transaction.await({ saveQuery(inv) })
     inv.dirty = false
 end
@@ -123,9 +131,16 @@ local function resolve(target)
     return ensure(target)
 end
 
+---Send an inventory to its owner and to everyone who has it open.
 local function sync(inv)
+    local view = Inv.View(inv)
+    local sent = {}
     if inv.owner then
-        TriggerClientEvent('tfc-inventory:client:sync', inv.owner, Inv.View(inv))
+        TriggerClientEvent('tfc-inventory:client:sync', inv.owner, view)
+        sent[inv.owner] = true
+    end
+    for viewer in pairs(inv.viewers or {}) do
+        if not sent[viewer] then TriggerClientEvent('tfc-inventory:client:sync', viewer, view) end
     end
 end
 
@@ -250,6 +265,7 @@ exports('GetItems', function() return Items end)
 
 -- Shared with other server files of this resource.
 InvSrv = {
+    saveOne = saveOne,
     ensure = ensure,
     resolve = resolve,
     sync = sync,
@@ -273,11 +289,26 @@ local function accessible(src)
     return set
 end
 
-TFC.Callback.Register('inventory:open', function(src)
+TFC.Callback.Register('inventory:open', function(src, context)
     local inv = ensure(src)
     if not inv then return { ok = false, error = 'inventory not loaded yet' } end
-    return { ok = true, player = Inv.View(inv) }
+
+    local secondary = nil
+    if InvSrv.openSecondary then
+        local second, err = InvSrv.openSecondary(src, type(context) == 'table' and context or {})
+        if second then
+            secondary = Inv.View(second)
+        elseif err then
+            TFC.UI.Notify(src, { title = 'Inventory', description = err, type = 'error' })
+        end
+    end
+    return { ok = true, player = Inv.View(inv), secondary = secondary }
 end, { rateLimit = 300 })
+
+TFC.Callback.Register('inventory:close', function(src)
+    if InvSrv.closeSecondary then InvSrv.closeSecondary(src) end
+    return { ok = true }
+end, { rateLimit = 100 })
 
 TFC.Callback.Register('inventory:move', function(src, fromId, fromSlot, toId, toSlot, count)
     local allowed = accessible(src)
@@ -332,6 +363,7 @@ TFC.On('playerLoaded', function(src)
 end)
 
 TFC.On('playerUnloaded', function(src)
+    if InvSrv.closeSecondary then InvSrv.closeSecondary(src) end
     local id = playerInv[src]
     playerInv[src] = nil
     lastUse[src] = nil
@@ -347,10 +379,11 @@ CreateThread(function()
     while not exports['tfc-core']:IsDatabaseReady() do Wait(250) end
     MySQL.query.await(SCHEMA)
     ready = true
+    InvSrv.ready = true
 
     local count = 0
     for _ in pairs(Items) do count = count + 1 end
-    TFC.RegisterModule({ name = 'inventory', version = '0.1.0' }, function()
+    TFC.RegisterModule({ name = 'inventory', version = '0.2.0' }, function()
         TFC.Log.Info('inventory ready: %d items', count)
     end)
 

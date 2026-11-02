@@ -26,4 +26,38 @@ InventoryConfig = {
 
     ---Minimum milliseconds between item uses per player.
     UseCooldown = 750,
+
+    -- Containers (phase 6b) -------------------------------------------------------------
+
+    ---Give: drag an item onto "Give" to hand it to the closest player within this many metres.
+    GiveDistance = 3.0,
+
+    ---Ground drops: size of a drop, how close you must be to open it, how long an untouched
+    ---drop lasts (minutes), and the prop shown on the ground (a marker is used if it can't load).
+    Drop = { slots = 30, maxWeight = 100000, radius = 2.0, lifetime = 30, model = 'prop_paper_bag_small' },
+
+    ---Vehicle storage. Saved by plate; empty storage is not stored, and storage nobody has
+    ---touched for PurgeDays is deleted on server start.
+    Vehicle = {
+        trunkDistance = 2.0,     -- metres from the trunk to open it
+        serverDistance = 7.0,    -- server check: metres from the vehicle's centre
+        purgeDays = 7,
+        glovebox = { slots = 5, maxWeight = 5000 },
+        trunk = { slots = 20, maxWeight = 40000 },   -- default for classes not listed below
+        ---Per GTA vehicle class. false = no trunk.
+        trunkByClass = {
+            [0]  = { slots = 15, maxWeight = 25000 },   -- compacts
+            [2]  = { slots = 30, maxWeight = 60000 },   -- SUVs
+            [6]  = { slots = 12, maxWeight = 20000 },   -- sports
+            [7]  = { slots = 10, maxWeight = 15000 },   -- super
+            [8]  = false,                               -- motorcycles
+            [9]  = { slots = 25, maxWeight = 50000 },   -- off-road
+            [10] = { slots = 40, maxWeight = 150000 },  -- industrial
+            [12] = { slots = 40, maxWeight = 120000 },  -- vans
+            [13] = false,                               -- bicycles
+            [20] = { slots = 50, maxWeight = 200000 },  -- commercial
+        },
+        ---Classes with no glovebox.
+        noGlovebox = { [8] = true, [13] = true },
+    },
 }

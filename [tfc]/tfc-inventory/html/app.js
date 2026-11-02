@@ -38,6 +38,12 @@ window.addEventListener('message', (e) => {
         case 'close': hide(); break;
         case 'update': update(msg.inventory); break;
         case 'hotbar': flashHotbar(msg); break;
+        case 'secondaryClosed':
+            if (state.secondary && state.secondary.id === msg.id) {
+                state.secondary = null;
+                render();
+            }
+            break;
     }
 });
 
@@ -99,6 +105,8 @@ document.addEventListener('error', (e) => {
     img.replaceWith(tile);
 }, true);
 
+const KINDS = { drop: 'Ground', trunk: 'Trunk', glovebox: 'Glovebox', stash: 'Stash', shop: 'Shop' };
+
 function renderPanel(panel, inv, isPlayer) {
     if (!inv) {
         panel.classList.add('hidden');
@@ -107,7 +115,7 @@ function renderPanel(panel, inv, isPlayer) {
     panel.classList.remove('hidden');
     panel.querySelector('[data-title]').textContent = inv.label || '';
     const kicker = panel.querySelector('[data-kicker]');
-    if (kicker) kicker.textContent = inv.type || '';
+    if (kicker) kicker.textContent = KINDS[inv.type] || inv.type || '';
 
     const pct = Math.min(100, (inv.weight / inv.maxWeight) * 100);
     panel.querySelector('[data-weight-text]').textContent = `${kg(inv.weight)} / ${kg(inv.maxWeight)}`;
@@ -242,10 +250,6 @@ document.addEventListener('mouseup', async (e) => {
     endDrag();
     if (!wasActive || !target) return;
 
-    const toId = target.dataset.inv;
-    const toSlot = Number(target.dataset.slot);
-    if (toId === d.invId && toSlot === d.slot) return;
-
     const item = itemAt(d.invId, d.slot);
     if (!item) return;
     let count = item.count;
@@ -253,6 +257,16 @@ document.addEventListener('mouseup', async (e) => {
     if (e.shiftKey) count = Math.max(1, Math.floor(item.count / 2));
     else if (e.ctrlKey) count = 1;
     else if (typed > 0) count = Math.min(typed, item.count);
+
+    if (target.dataset.give) {
+        const g = await post('give', { slot: d.slot, count });
+        if (!g.ok) toast(g.error || 'could not give that');
+        return;
+    }
+
+    const toId = target.dataset.inv;
+    const toSlot = Number(target.dataset.slot);
+    if (toId === d.invId && toSlot === d.slot) return;
 
     const r = await post('move', { fromId: d.invId, fromSlot: d.slot, toId, toSlot, count });
     if (!r.ok) toast(r.error || 'could not move that');
@@ -264,7 +278,11 @@ function slotUnder(x, y) {
     if (!hidden) ghost.style.display = 'none';
     const el = document.elementFromPoint(x, y);
     if (!hidden) ghost.style.display = '';
-    return el ? el.closest('#screen .slot') : null;
+    if (!el) return null;
+    // Giving only works from your own inventory.
+    const give = el.closest('#give-zone');
+    if (give) return drag && state.player && drag.invId === state.player.id ? give : null;
+    return el.closest('#screen .slot');
 }
 
 function endDrag() {
@@ -381,7 +399,8 @@ function previewWeight(inv) {
 
 function preview(name, body) {
     if (name === 'move') {
-        const inv = state.player;
+        if (body.fromId !== body.toId) return { ok: false, error: 'preview: moving between inventories needs the game' };
+        const inv = findInv(body.fromId);
         const a = inv.items.find((i) => i.slot === body.fromSlot);
         const b = inv.items.find((i) => i.slot === body.toSlot);
         if (!b) {
@@ -401,11 +420,16 @@ function preview(name, body) {
         return { ok: true };
     }
     if (name === 'use') return { ok: false, error: 'preview: using items needs the game' };
+    if (name === 'give') return { ok: false, error: 'nobody is close enough' };
     return { ok: true };
 }
 
 if (!IN_GAME) {
     document.body.style.background = 'linear-gradient(160deg, #6d8fb3 0%, #b9a27c 55%, #4b5a3c 100%)';
     previewWeight(sample);
-    open({ items: sampleItems, player: sample, imagePath: 'images/', hotbar: 5 });
+    open({
+        items: sampleItems, player: sample, imagePath: 'images/', hotbar: 5,
+        secondary: { id: 'trunk:46LPZE29', type: 'trunk', label: 'Trunk (46LPZE29)', slots: 20, maxWeight: 40000, weight: 7600,
+            items: [{ slot: 1, name: 'repair_kit', count: 2 }, { slot: 2, name: 'water', count: 6 }, { slot: 5, name: 'radio', count: 1 }] },
+    });
 }

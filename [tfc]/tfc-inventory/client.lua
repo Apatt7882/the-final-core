@@ -18,11 +18,42 @@ local function close()
     isOpen = false
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'close' })
+    TFC.Callback.Await('inventory:close')
+end
+
+-- Where am I? In a vehicle -> glovebox; at the back of one -> trunk; otherwise the ground.
+local function trunkPosition(veh)
+    local bone = GetEntityBoneIndexByName(veh, 'boot')
+    if bone ~= -1 then return GetWorldPositionOfEntityBone(veh, bone) end
+    -- No boot bone: use the rear of the model.
+    local min = GetModelDimensions(GetEntityModel(veh))
+    return GetOffsetFromEntityInWorldCoords(veh, 0.0, min.y, 0.0)
+end
+
+local function context()
+    local ped = PlayerPedId()
+    local veh = GetVehiclePedIsIn(ped, false)
+    if veh ~= 0 then
+        return { kind = 'glovebox', net = VehToNet(veh), class = GetVehicleClass(veh) }
+    end
+
+    local here = GetEntityCoords(ped)
+    local best, bestDist = nil, InventoryConfig.Vehicle.trunkDistance
+    for _, v in ipairs(GetGamePool('CVehicle')) do
+        if #(GetEntityCoords(v) - here) < 10.0 and NetworkGetEntityIsNetworked(v) then
+            local d = #(trunkPosition(v) - here)
+            if d < bestDist then best, bestDist = v, d end
+        end
+    end
+    if best then
+        return { kind = 'trunk', net = VehToNet(best), class = GetVehicleClass(best) }
+    end
+    return { kind = 'ground' }
 end
 
 local function open()
     if isOpen or not TFC.PlayerData or IsPauseMenuActive() then return end
-    local r = TFC.Callback.Await('inventory:open') or NO_RESPONSE
+    local r = TFC.Callback.Await('inventory:open', context()) or NO_RESPONSE
     if not r.ok then
         TFC.UI.Notify({ title = 'Inventory', description = r.error, type = 'error' })
         return
@@ -73,6 +104,17 @@ TFC.OnNet('tfc-inventory:client:sync', function(view)
     if isOpen then SendNUIMessage({ action = 'update', inventory = view }) end
 end)
 
+TFC.OnNet('tfc-inventory:client:secondaryClosed', function(id)
+    if isOpen then SendNUIMessage({ action = 'secondaryClosed', id = id }) end
+end)
+
+TFC.OnNet('tfc-inventory:client:trunkDoor', function(net, openDoor)
+    if not NetworkDoesNetworkIdExist(net) then return end
+    local veh = NetToVeh(net)
+    if veh == 0 then return end
+    if openDoor then SetVehicleDoorOpen(veh, 5, false, false) else SetVehicleDoorShut(veh, 5, false) end
+end)
+
 TFC.OnNet('tfc-inventory:client:item', function(name, def)
     Items[name] = def
 end)
@@ -104,6 +146,80 @@ end)
 
 RegisterNUICallback('use', function(d, cb)
     cb(use(d.slot))
+end)
+
+RegisterNUICallback('give', function(d, cb)
+    cb(TFC.Callback.Await('inventory:give', d.slot, d.count) or NO_RESPONSE)
+end)
+
+-- Ground drops: a bag prop near the player for every drop within 50 m ------------------------------
+
+local drops = {}    -- id -> { coords, object }
+
+TFC.OnNet('tfc-inventory:client:drop', function(id, coords)
+    drops[id] = { coords = vector3(coords.x, coords.y, coords.z) }
+end)
+
+TFC.OnNet('tfc-inventory:client:dropRemoved', function(id)
+    local d = drops[id]
+    if d and d.object and DoesEntityExist(d.object) then DeleteEntity(d.object) end
+    drops[id] = nil
+end)
+
+local dropModel = joaat(InventoryConfig.Drop.model)
+local useMarker = not IsModelInCdimage(dropModel)
+
+CreateThread(function()
+    while true do
+        local here = GetEntityCoords(PlayerPedId())
+        local nearAny = false
+
+        for _, d in pairs(drops) do
+            local dist = #(d.coords - here)
+            if dist < 50.0 then
+                nearAny = true
+                if not useMarker and not d.object then
+                    RequestModel(dropModel)
+                    local t = GetGameTimer() + 3000
+                    while not HasModelLoaded(dropModel) and GetGameTimer() < t do Wait(0) end
+                    if HasModelLoaded(dropModel) then
+                        d.object = CreateObject(dropModel, d.coords.x, d.coords.y, d.coords.z, false, false, false)
+                        PlaceObjectOnGroundProperly(d.object)
+                        FreezeEntityPosition(d.object, true)
+                        SetEntityCollision(d.object, false, false)
+                        SetModelAsNoLongerNeeded(dropModel)
+                    else
+                        useMarker = true
+                    end
+                end
+            elseif d.object then
+                DeleteEntity(d.object)
+                d.object = nil
+            end
+        end
+
+        if useMarker and nearAny then
+            -- Draw markers every frame for a second, then re-check distances.
+            local untilTime = GetGameTimer() + 1000
+            while GetGameTimer() < untilTime do
+                for _, d in pairs(drops) do
+                    if #(d.coords - here) < 25.0 then
+                        DrawMarker(2, d.coords.x, d.coords.y, d.coords.z + 0.3, 0, 0, 0, 0, 180.0, 0, 0.25, 0.25, 0.2, 232, 163, 61, 180, false, true, 2, false, nil, nil, false)
+                    end
+                end
+                Wait(0)
+            end
+        else
+            Wait(1000)
+        end
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    for _, d in pairs(drops) do
+        if d.object and DoesEntityExist(d.object) then DeleteEntity(d.object) end
+    end
 end)
 
 AddEventHandler('onResourceStop', function(resource)

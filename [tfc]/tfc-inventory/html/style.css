@@ -188,6 +188,25 @@ html, body {
 
 .amount input:focus { outline: none; border-color: var(--accent); }
 
+.give {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(4 * var(--u));
+    padding: calc(16 * var(--u)) calc(8 * var(--u));
+    border: 1px dashed rgba(255, 255, 255, 0.22);
+    border-radius: calc(10 * var(--u));
+    background: var(--bg);
+    color: var(--muted);
+    font-size: calc(14 * var(--u));
+    font-weight: 600;
+    transition: border-color 120ms, background 120ms, color 120ms;
+}
+
+.give svg { width: calc(22 * var(--u)); height: calc(22 * var(--u)); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); }
+.give small { font-size: calc(11 * var(--u)); font-weight: 400; }
+.give.drop-target { border-color: var(--accent); background: rgba(232, 163, 61, 0.12); color: var(--text); }
+
 .help { margin: 0; font-size: calc(12 * var(--u)); line-height: 1.5; color: var(--muted); text-align: center; }
 .help b { color: var(--text); font-weight: 600; }
 

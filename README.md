@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 6a (inventory core)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 6b (drops, vehicle storage, giving)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -58,6 +58,29 @@ Status: **phase 6a (inventory core)**. Phases 1-4 are done; phase 5 (ESX/QB brid
    The old per-command lines (`command.givemoney`, `command.setjob`, ...) are no longer needed and can be removed.
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
+
+## Check that phase 6b works (drops, trunks, gloveboxes, giving)
+
+F2 opens your inventory plus whatever is around you:
+
+| Where you are | Second panel |
+| --- | --- |
+| Sitting in a vehicle | Glovebox (5 slots) |
+| Standing at the back of a vehicle | Trunk (size by vehicle class; bikes have none) and the trunk opens |
+| Anywhere else | Ground |
+
+| Who | Do | Expect |
+| --- | --- | --- |
+| You | Open on foot, drag water to the Ground panel | A bag appears on the ground |
+| Second player | Walk to the bag, F2 | Same ground panel; take the water and the bag disappears once both close |
+| You | Drop cash on the ground | HUD cash goes down; `tfc_transactions` shows "moved to Ground" |
+| You | Stand at a car's trunk, F2, store items, close, come back | Items are still there (saved by plate) |
+| You | Sit in the car, F2 | Glovebox instead of trunk |
+| You + second player standing close | Drag an item onto **Give** | They get it; both see a notification |
+| You | Walk away with a drop or trunk open, then move an item | "You cannot reach that" |
+
+Drops last 30 minutes untouched (`Drop.lifetime`). Vehicle storage nobody has touched for 7 days is cleared on server
+start (`Vehicle.purgeDays`) so random NPC cars don't pile up; that becomes "owned vehicles only" once vehicles have owners.
 
 ## Check that phase 6a works (inventory)
 

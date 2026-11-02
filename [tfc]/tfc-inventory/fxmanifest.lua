@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-inventory'
 author 'Andrew'
 description 'The Final Core - slot and weight inventory'
-version '0.1.0'
+version '0.2.0'
 
 dependencies {
     'oxmysql',
@@ -22,6 +22,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/engine.lua',
     'server/main.lua',
+    'server/containers.lua',
 }
 
 client_script 'client.lua'
