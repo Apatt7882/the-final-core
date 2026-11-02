@@ -37,6 +37,8 @@
 
 ---@class TFCUI
 ---@field Notify fun(srcOrData: integer|TFCNotify|string, data?: TFCNotify|string) client: Notify(data); server: Notify(src, data)
+---@field ShowPrompt fun(text: string) client only: show an interaction prompt, e.g. "[E] Open shop"
+---@field HidePrompt fun() client only: hide the interaction prompt
 
 ---@class TFC
 ---@field UI TFCUI

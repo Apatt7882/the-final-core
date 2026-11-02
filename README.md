@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 6c (weapons, drugs, item images)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 6d (shops and the in-game shop manager)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -29,6 +29,7 @@ Status: **phase 6c (weapons, drugs, item images)**. Phases 1-4 are done; phase 5
   tfc-hud/            -- date/time, money, job and location HUD (NUI)
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
+  tfc-shops/          -- stores, dealers, armories; buy/sell, stock, admin shop manager (NUI)
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -40,12 +41,13 @@ Status: **phase 6c (weapons, drugs, item images)**. Phases 1-4 are done; phase 5
    ```cfg
    setr tfc_debug 1
    ensure oxmysql
-   ensure ox_lib          # optional: nicer notifications; falls back to the GTA feed
+   ensure ox_lib          # optional: nicer notifications and prompts; falls back to GTA's own
    ensure tfc-core
    ensure tfc-multichar
    ensure tfc-inventory
    ensure tfc-accounts
    ensure tfc-jobs
+   ensure tfc-shops
    ensure tfc-hud
    ensure tfc-example
 
@@ -58,6 +60,37 @@ Status: **phase 6c (weapons, drugs, item images)**. Phases 1-4 are done; phase 5
    The old per-command lines (`command.givemoney`, `command.setjob`, ...) are no longer needed and can be removed.
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
+
+## Check that phase 6d works (shops)
+
+Shop **types** (what's sold, prices, payment, hours, job locks) are in `tfc-shops/config.lua`. Shop **locations** are in
+the database (`tfc_shops`, `tfc_shop_stock`, created automatically). On the very first start, 9 × 24/7 and
+9 × Ammu-Nation are added from `ShopsConfig.Locations`; after that, admins manage every shop in game with `/shops`.
+
+| Type | Pays with | Notes |
+| --- | --- | --- |
+| `general` 24/7 Store | cash, bank, card (credit) | blip, always open |
+| `ammunation` Ammu-Nation | bank, cash, card | buys back guns (into bank) |
+| `pawn` Pawn Shop | cash | 08-22, buys phones, radios, kits, tools; small limited stock |
+| `drugdealer` Dealer | cash | 20-05, no blip, limited weed stock, buys every drug |
+| `armsdealer` Arms Dealer | cash | 22-04, no blip, limited stock, guns have scratched serials |
+| `police_armory` Police Armory | free | police on duty; better gear needs higher ranks |
+| `ems_supply` EMS Supply | free | ambulance on duty |
+
+| Do | Expect |
+| --- | --- |
+| Start the server | `module shops v0.1.0 ready`, `shops ready: 18 shops` (first start also: `added 18 shops from config`) |
+| Drive to the Strawberry 24/7 (green bag blip) | Shopkeeper behind the counter; walk up: **[E] 24/7 Store** |
+| Press E, buy 2 Bandages with Cash | Cash goes down by $50, bandages in your inventory, wallet in the window updates |
+| Try to buy more than you can afford or carry | Clear error, nothing charged |
+| `/shops` (admin) | Shop Manager: every shop, nearest first, with Go / Edit |
+| Pick **Dealer**, name it, stand somewhere, **Place shop here** | Dealer appears where you stood, facing your way; no blip |
+| Walk up during the day | "Dealer · closed until 20:00". At night: buy weed (stock goes down), sell drugs for cash |
+| Edit the dealer: **Move to me**, **Restock**, change blip, **Remove** (click twice) | Every player sees the change right away |
+| Place a **Police Armory**; open it as a civilian, off-duty cop, on-duty cop | "employees only" / "you need to be on duty" / free gear, rank-locked items marked "Rank N+" |
+
+Opening hours follow the GTA clock players see (`Clock = 'game'`); set `Clock = 'real'` to use server time.
+If a seeded shopkeeper stands a little off (inside a wall or floating), stand where they should be and use **Move to me**.
 
 ## Check that phase 6c works (weapons, drugs, item images)
 
@@ -163,11 +196,11 @@ Jobs, ranks and pay are in `tfc-jobs/config.lua` (unemployed, police, ambulance,
 
 | Where | Do | Expect |
 | --- | --- | --- |
-| Server console | Start the server | `module jobs v0.1.0 ready`, `jobs ready: 5 jobs, paycheck every 15 min` |
+| Server console | Start the server | `module jobs v0.2.1 ready`, `jobs ready: 5 jobs, paycheck every 15 min` |
 | In game | Load a character | HUD job line: "Unemployed" (no duty dot) |
 | In game | `/setjob me police 5` | HUD: "LSPD · Chief of Police" with a grey dot (off duty) |
 | In game | `/duty` | Dot turns green; `/duty` again turns it grey |
-| In game | Stay on duty 15 minutes | Bank +$850 "Paycheck: LSPD Chief of Police" |
+| In game | Stay on duty 15 minutes | Bank +$850 and a "Paycheck: $850 deposited to your bank" notice. `/job` shows minutes to the next one |
 | In game | `/job` | Your job, rank, duty and pay |
 | Second player | `/hire <their id> 1`, `/promote`, `/demote`, `/fire` | Works for ranks below yours; refused at or above your rank |
 | Reconnect | Rejoin | Same job and rank; duty starts off |
@@ -306,6 +339,16 @@ Giving a weapon with `AddItem` creates a serial number, 0 rounds loaded and 100%
 Server hooks: `itemUsed(source, name, slot)`, `itemCountChanged(source, name, count, delta, reason)`.
 Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 
+### Shops (phase 6d, `exports['tfc-shops']`, server)
+
+| Call | Returns |
+| --- | --- |
+| `GetShops()` / `GetShop(id)` | shops as players see them (`id, type, label, x, y, z, h, ped, blip, hours, job`) |
+| `RestockShop(id)` | fills every limited item back to its maximum |
+
+Server hooks: `shopPurchase(source, shopId, item, count, total, payment)`, `shopSale(source, shopId, item, count, total, account)`.
+Admin: `/shops`.
+
 ### Permissions (phase 4c)
 
 `TFC.HasPermission(src, 'tfc.admin')`, `TFC.IsAdmin(src)` (server, any module), plus `exports['tfc-core']:HasPermission` /
@@ -330,7 +373,8 @@ Commands: `TFC.RegisterCommand(name, { help, params, restricted }, handler)` (se
 suggestions (only shown to players allowed to use it) and an automatic usage message when arguments are missing.
 `TFC.ResolveTarget(src, arg)` turns `"me"` or an ID into an online player's source.
 
-UI: `TFC.UI.Notify(data)` on the client, `TFC.UI.Notify(src, data)` on the server. Uses ox_lib if it's running.
+UI: `TFC.UI.Notify(data)` on the client, `TFC.UI.Notify(src, data)` on the server; `TFC.UI.ShowPrompt('[E] ...')` /
+`TFC.UI.HidePrompt()` on the client. All use ox_lib if it's running, GTA's own UI otherwise.
 
 Saving: changed characters are saved in one transaction every `Config.SaveInterval` seconds (default 300),
 and always on character switch, disconnect, and txAdmin shutdown.

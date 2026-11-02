@@ -16,6 +16,8 @@
         "ClientWeapons",
         "Jobs",
         "JobsSrv",
+        "ShopsConfig",
+        "ShopsSrv",
         "source",
         "exports",
         "Citizen",

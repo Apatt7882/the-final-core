@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Shops</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+
+        <!-- Shop window ------------------------------------------------------------------>
+        <main class="window shop hidden" id="shop" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+            <header class="head">
+                <div>
+                    <p class="brand" id="shop-kicker">Shop</p>
+                    <h1 id="shop-title">Store</h1>
+                </div>
+                <div class="head-right">
+                    <div class="wallet" id="wallet"></div>
+                    <button class="icon-btn" data-close aria-label="Close">
+                        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <nav class="tabs" id="shop-tabs" role="tablist">
+                <button class="tab" data-mode="buy" aria-selected="true">Buy</button>
+                <button class="tab" data-mode="sell">Sell</button>
+            </nav>
+
+            <section class="shop-body">
+                <div class="grid-wrap">
+                    <div class="grid" id="grid"></div>
+                    <p class="empty hidden" id="grid-empty"></p>
+                </div>
+
+                <aside class="checkout" id="checkout">
+                    <div class="pick-empty" id="pick-empty">
+                        <p>Select an item</p>
+                    </div>
+                    <div class="pick hidden" id="pick">
+                        <div class="pick-image"><img id="pick-img" alt=""></div>
+                        <h2 id="pick-name"></h2>
+                        <p class="muted" id="pick-desc"></p>
+                        <dl class="facts" id="pick-facts"></dl>
+
+                        <label class="field-label">Amount</label>
+                        <div class="stepper">
+                            <button id="qty-minus" aria-label="Less">−</button>
+                            <input id="qty" type="number" min="1" value="1" inputmode="numeric">
+                            <button id="qty-plus" aria-label="More">+</button>
+                            <button class="ghost small" id="qty-max">Max</button>
+                        </div>
+
+                        <div id="pay-block">
+                            <label class="field-label" id="pay-label">Pay with</label>
+                            <div class="segmented" id="pay"></div>
+                        </div>
+
+                        <div class="total-row">
+                            <span>Total</span>
+                            <strong id="total">$0</strong>
+                        </div>
+                        <button class="primary" id="confirm">Buy</button>
+                        <p class="msg" id="msg" role="status"></p>
+                    </div>
+                </aside>
+            </section>
+        </main>
+
+        <!-- Admin shop manager ------------------------------------------------------------>
+        <main class="window admin hidden" id="admin" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+            <header class="head">
+                <div>
+                    <p class="brand">Admin · Shop Manager</p>
+                    <h1 id="admin-title">Shops</h1>
+                </div>
+                <div class="head-right">
+                    <span class="badge" id="admin-count"></span>
+                    <button class="icon-btn" data-close aria-label="Close">
+                        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <section class="admin-body">
+                <div class="list-col">
+                    <div class="toolbar">
+                        <input id="admin-search" placeholder="Search by name, type or #id" autocomplete="off">
+                        <select id="admin-sort" aria-label="Sort">
+                            <option value="distance">Nearest first</option>
+                            <option value="id">Newest first</option>
+                            <option value="type">By type</option>
+                        </select>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>#</th><th>Shop</th><th>Blip</th><th class="num">Distance</th><th></th></tr></thead>
+                            <tbody id="admin-rows"></tbody>
+                        </table>
+                        <p class="empty hidden" id="admin-empty">No shops match.</p>
+                    </div>
+                </div>
+
+                <aside class="form-col">
+                    <div class="form-head">
+                        <h2 id="form-title">Place a new shop</h2>
+                        <button class="ghost small hidden" id="form-cancel">New shop instead</button>
+                    </div>
+
+                    <label class="field-label" for="f-type">Type</label>
+                    <select id="f-type"></select>
+                    <p class="type-info" id="type-info"></p>
+
+                    <label class="field-label" for="f-label">Name <span class="opt">optional</span></label>
+                    <input id="f-label" maxlength="48" autocomplete="off">
+
+                    <label class="field-label" for="f-ped">Shopkeeper model <span class="opt">optional</span></label>
+                    <input id="f-ped" maxlength="64" autocomplete="off" spellcheck="false">
+
+                    <label class="field-label">Map blip</label>
+                    <div class="segmented" id="f-blip">
+                        <label><input type="radio" name="blip" value="default" checked><span>Type default</span></label>
+                        <label><input type="radio" name="blip" value="show"><span>Show</span></label>
+                        <label><input type="radio" name="blip" value="hide"><span>Hide</span></label>
+                    </div>
+
+                    <div class="place-hint" id="place-hint">
+                        Stand where the shopkeeper should stand, facing the way they should face.
+                        <span class="pos" id="my-pos"></span>
+                    </div>
+
+                    <div class="form-actions" id="new-actions">
+                        <button class="primary" id="place">Place shop here</button>
+                    </div>
+
+                    <div class="form-actions edit hidden" id="edit-actions">
+                        <button class="primary" id="save">Save changes</button>
+                        <button class="secondary" id="move">Move to me</button>
+                        <button class="secondary" id="restock">Restock</button>
+                        <button class="danger" id="delete">Remove</button>
+                    </div>
+                    <p class="msg" id="admin-msg" role="status"></p>
+                </aside>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

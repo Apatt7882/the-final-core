@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-jobs'
 author 'Andrew'
 description 'The Final Core - jobs, ranks, duty, paychecks and the Boss Menu'
-version '0.2.0'
+version '0.2.1'
 
 dependencies {
     'oxmysql',

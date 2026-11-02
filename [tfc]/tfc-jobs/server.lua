@@ -271,10 +271,28 @@ exports('HasJob', HasJob)
 exports('GetPlayersWithJob', GetPlayersWithJob)
 exports('GetJobs', function() return Jobs end)
 
+---Is this player earning right now? (Duty jobs only pay while on duty.)
+local function isWorking(state)
+    local job = Jobs[state.name]
+    if not job then return false end
+    return job.noDuty or state.onDuty or JobsConfig.PayOffDuty
+end
+JobsSrv.IsWorking = isWorking
+
 -- Lifecycle --------------------------------------------------------------------------------
 
 TFC.On('playerLoaded', function(src)
-    CreateThread(function() JobsSrv.Load(src) end)
+    CreateThread(function()
+        local state = JobsSrv.Load(src)
+        -- Duty always starts off: remind people with a paid duty job to clock in.
+        if state and not isWorking(state) then
+            local grade = Jobs[state.name].grades[state.grade]
+            if grade and (grade.pay or 0) > 0 then
+                Wait(5000)
+                JobsSrv.Notify(src, 'You are off duty. Use /duty to clock in and start earning.')
+            end
+        end
+    end)
 end)
 
 TFC.On('playerUnloaded', function(src)
@@ -282,31 +300,63 @@ TFC.On('playerUnloaded', function(src)
 end)
 
 -- Paychecks: count working minutes per player; pay when they reach PaycheckMinutes.
+-- Two passes: first count minutes and collect who is due (no waiting, so the cache can't
+-- change under us), then pay each one. Every step is protected so one bad paycheck can
+-- never stop the loop for everyone else.
+
+local function payOne(due)
+    local state = cache[due.src]
+    -- Gone, switched character or job while we were paying others: skip.
+    if not state or state.charId ~= due.charId or state.name ~= due.name then return end
+
+    local ok, err = exports['tfc-accounts']:AddMoney(due.src, 'bank', due.pay, due.reason)
+    if ok then
+        JobsSrv.RecordPay(due.name, due.charId, due.pay)
+        JobsSrv.Notify(due.src, ('Paycheck: $%d deposited to your bank'):format(due.pay), 'success')
+        TFC.Log.Debug('paid %s $%d (%s)', due.src, due.pay, due.reason)
+    else
+        TFC.Log.Warn('paycheck for %s failed: %s', due.src, tostring(err))
+    end
+end
+
 CreateThread(function()
     while true do
         Wait(60000)
-        local accounts = GetResourceState('tfc-accounts') == 'started'
 
-        for src, state in pairs(cache) do
-            local job = Jobs[state.name]
-            local working = job.noDuty or state.onDuty or JobsConfig.PayOffDuty
-            if working then
-                state.minutes = state.minutes + 1
-                if state.minutes >= JobsConfig.PaycheckMinutes then
-                    state.minutes = 0
-                    local grade = job.grades[state.grade]
-                    local pay = grade and grade.pay or 0
-                    if accounts and pay > 0 then
-                        local reason = ('Paycheck: %s'):format(JobsSrv.Describe(state.name, state.grade))
-                        if exports['tfc-accounts']:AddMoney(src, 'bank', pay, reason) then
-                            JobsSrv.RecordPay(state.name, state.charId, pay)
+        local due = {}
+        local okCount, countErr = pcall(function()
+            for src, state in pairs(cache) do
+                if isWorking(state) then
+                    state.minutes = state.minutes + 1
+                    if state.minutes >= JobsConfig.PaycheckMinutes then
+                        state.minutes = 0
+                        local grade = Jobs[state.name].grades[state.grade]
+                        local pay = grade and grade.pay or 0
+                        if pay > 0 then
+                            due[#due + 1] = {
+                                src = src, charId = state.charId, name = state.name, pay = pay,
+                                reason = ('Paycheck: %s'):format(JobsSrv.Describe(state.name, state.grade)),
+                            }
                         end
                     end
                 end
             end
+        end)
+        if not okCount then TFC.Log.Error('paycheck count failed: %s', tostring(countErr)) end
+
+        if #due > 0 then
+            if GetResourceState('tfc-accounts') ~= 'started' then
+                TFC.Log.Warn('%d paycheck(s) skipped: tfc-accounts is not started', #due)
+            else
+                for _, d in ipairs(due) do
+                    local ok, err = pcall(payOne, d)
+                    if not ok then TFC.Log.Error('paycheck for %s failed: %s', d.src, tostring(err)) end
+                end
+            end
         end
 
-        JobsSrv.TouchDutySessions()
+        local okTouch, touchErr = pcall(JobsSrv.TouchDutySessions)
+        if not okTouch then TFC.Log.Error('duty session update failed: %s', tostring(touchErr)) end
     end
 end)
 
@@ -327,6 +377,15 @@ TFC.RegisterCommand('job', { help = 'Show your job, rank and pay' }, function(sr
     local text = JobsSrv.Describe(job.name, job.grade)
     if job.onDuty ~= nil then text = text .. (job.onDuty and ' (on duty)' or ' (off duty)') end
     text = text .. (' | $%d every %d min'):format(job.pay, JobsConfig.PaycheckMinutes)
+
+    local state = cache[src]
+    if state and job.pay > 0 then
+        if isWorking(state) then
+            text = text .. (' | next paycheck in %d min'):format(math.max(1, JobsConfig.PaycheckMinutes - state.minutes))
+        else
+            text = text .. ' | not earning: use /duty to clock in'
+        end
+    end
     JobsSrv.Notify(src, text)
 end)
 
