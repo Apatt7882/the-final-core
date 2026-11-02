@@ -35,7 +35,11 @@ end
 
 -- Admin command. From the server console: `tfc modules`, `tfc version`.
 -- Players need: add_ace group.admin command.tfc allow
-RegisterCommand('tfc', function(_, args)
+TFC.RegisterCommand('tfc', {
+    help = 'The Final Core admin tools',
+    restricted = true,
+    params = { { name = 'action', help = 'modules or version' } },
+}, function(_, args)
     local sub = args[1]
 
     if sub == 'modules' then
@@ -45,4 +49,4 @@ RegisterCommand('tfc', function(_, args)
     else
         TFC.Log.Info('usage: tfc <modules|version>')
     end
-end, true)
+end)

@@ -205,3 +205,31 @@ html, body {
     color: var(--muted);
     white-space: nowrap;
 }
+
+.postal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: calc(52 * var(--u));
+    height: calc(40 * var(--u));
+    padding: 0 calc(8 * var(--u));
+    border-radius: calc(7 * var(--u));
+    background: rgba(255, 255, 255, 0.07);
+    line-height: 1;
+}
+
+.postal-label {
+    font-size: calc(10 * var(--u));
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.postal-code {
+    margin-top: calc(3 * var(--u));
+    font-size: calc(17 * var(--u));
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}

@@ -22,6 +22,9 @@ local files = {
     side .. '/lib/player.lua',
     side .. '/lib/ui.lua',
 }
+if side == 'server' then
+    files[#files + 1] = 'server/lib/commands.lua'
+end
 
 for _, path in ipairs(files) do
     local code = LoadResourceFile(CORE, path)

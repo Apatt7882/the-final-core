@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const config = { timeSource: 'game', use24Hour: true, showLocation: true };
+const config = { timeSource: 'game', use24Hour: true, showLocation: true, showPostal: false };
 let realClock = null;
 
 // Formatting ------------------------------------------------------------------------
@@ -110,6 +110,10 @@ const setters = {
     time: (v) => { if (config.timeSource === 'game') renderTime(v); },
     location: setLocation,
     anchor: setAnchor,
+    postal: (code) => {
+        $('postal-box').classList.toggle('hidden', !config.showPostal || !code);
+        if (code) $('postal').textContent = code;
+    },
 };
 
 let hideTimer = null;
@@ -132,6 +136,7 @@ window.addEventListener('message', (event) => {
         case 'init':
             Object.assign(config, msg.config || {});
             $('location').classList.toggle('hidden', !config.showLocation);
+            $('postal-box').classList.toggle('hidden', !config.showPostal);
             if (msg.anchor) setAnchor(msg.anchor);
             if (config.timeSource === 'real') startRealClock();
             else clearInterval(realClock);
@@ -153,13 +158,14 @@ window.addEventListener('message', (event) => {
 if (!IN_GAME) {
     document.body.style.background = 'linear-gradient(160deg, #6d8fb3 0%, #b9a27c 55%, #4b5a3c 100%)';
     const post = (data) => window.postMessage(data, '*');
-    post({ action: 'init', config: { timeSource: 'game', use24Hour: true, showLocation: true }, anchor: { left: 0.0185, right: 0.159, bottom: 0.967, top: 0.791 } });
+    post({ action: 'init', config: { timeSource: 'game', use24Hour: true, showLocation: true, showPostal: true }, anchor: { left: 0.0185, right: 0.159, bottom: 0.967, top: 0.791 } });
     post({ action: 'set', field: 'time', value: { hour: 14, minute: 32, day: 1, month: 10, year: 2026, weekday: 0 } });
     post({ action: 'set', field: 'cash', value: 1250 });
     post({ action: 'set', field: 'bank', value: 48320 });
     post({ action: 'set', field: 'credit', value: -1200 });
     post({ action: 'set', field: 'job', value: { label: 'Police', grade: 'Sergeant', onDuty: true } });
     post({ action: 'set', field: 'location', value: { dir: 'NW', street: 'Vinewood Blvd', cross: 'Las Lagunas Blvd', zone: 'Downtown Vinewood' } });
+    post({ action: 'set', field: 'postal', value: '7041' });
     post({ action: 'visible', value: true });
     setTimeout(() => post({ action: 'money', account: 'cash', value: 1500, delta: 250 }), 400);
 }

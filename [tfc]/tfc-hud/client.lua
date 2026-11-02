@@ -5,6 +5,7 @@
 local enabled = true   -- player's /hud toggle
 local visible = false  -- what the page currently shows
 local last = {}        -- last value sent for each field
+local updatePostal     -- defined in the Postals section below
 
 local function send(field, value)
     if last[field] == value then return end
@@ -61,6 +62,7 @@ end
 
 local function location()
     local coords = GetEntityCoords(PlayerPedId())
+    updatePostal(coords)
     local streetHash, crossHash = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
     local street = GetStreetNameFromHashKey(streetHash)
     local cross = crossHash ~= 0 and GetStreetNameFromHashKey(crossHash) or ''
@@ -68,6 +70,101 @@ local function location()
     if zone == 'NULL' then zone = '' end
 
     return { dir = heading(), street = street, cross = cross, zone = zone }
+end
+
+-- Postals ---------------------------------------------------------------------------
+
+---@type { code: string, x: number, y: number }[]
+local postals = {}
+local postalFrom          -- position the nearest postal was last computed at
+local route               -- postal we set a waypoint to
+
+local function loadPostals()
+    local cfg = HudConfig.Postals
+    if not cfg or not cfg.Enabled then return end
+
+    local raw = LoadResourceFile(GetCurrentResourceName(), cfg.File)
+    if not raw then
+        TFC.Log.Warn('no postal file at %s; postal display is off', cfg.File)
+        return
+    end
+
+    local ok, data = pcall(json.decode, raw)
+    if not ok or type(data) ~= 'table' then
+        TFC.Log.Error('could not read %s: not valid JSON', cfg.File)
+        return
+    end
+
+    for _, p in ipairs(data) do
+        if p.code and tonumber(p.x) and tonumber(p.y) then
+            postals[#postals + 1] = { code = tostring(p.code), x = tonumber(p.x), y = tonumber(p.y) }
+        end
+    end
+    TFC.Log.Info('loaded %d postals', #postals)
+end
+
+---@return { code: string, x: number, y: number }|nil, number
+local function nearestPostal(x, y)
+    local best, bestDist = nil, math.huge
+    for i = 1, #postals do
+        local p = postals[i]
+        local dx, dy = p.x - x, p.y - y
+        local d = dx * dx + dy * dy
+        if d < bestDist then best, bestDist = p, d end
+    end
+    return best, math.sqrt(bestDist)
+end
+
+updatePostal = function(coords)
+    if #postals == 0 then return end
+
+    -- Only search again after moving 5 m.
+    if postalFrom then
+        local dx, dy = coords.x - postalFrom.x, coords.y - postalFrom.y
+        if dx * dx + dy * dy < 25.0 then return end
+    end
+    postalFrom = { x = coords.x, y = coords.y }
+
+    local p = nearestPostal(coords.x, coords.y)
+    send('postal', p and p.code or false)
+
+    if route then
+        local dx, dy = route.x - coords.x, route.y - coords.y
+        if dx * dx + dy * dy < HudConfig.Postals.ArriveDistance ^ 2 then
+            SetWaypointOff()
+            TFC.UI.Notify({ title = 'Postal ' .. route.code, description = 'You have arrived', type = 'success' })
+            route = nil
+        end
+    end
+end
+
+local function findPostal(code)
+    code = tostring(code):lower()
+    for _, p in ipairs(postals) do
+        if p.code:lower() == code then return p end
+    end
+    return nil
+end
+
+if HudConfig.Postals and HudConfig.Postals.Enabled and HudConfig.Postals.Command then
+    RegisterCommand(HudConfig.Postals.Command, function(_, args)
+        if not args[1] then
+            if IsWaypointActive() then SetWaypointOff() end
+            route = nil
+            TFC.UI.Notify({ title = 'Postal', description = 'Route cleared', type = 'inform' })
+            return
+        end
+
+        local p = findPostal(args[1])
+        if not p then
+            TFC.UI.Notify({ title = 'Postal', description = ('Postal %s does not exist'):format(args[1]), type = 'error' })
+            return
+        end
+
+        SetNewWaypoint(p.x, p.y)
+        route = p
+        TFC.UI.Notify({ title = 'Postal ' .. p.code, description = 'Waypoint set', type = 'success' })
+    end, false)
 end
 
 -- Visibility -------------------------------------------------------------------------
@@ -119,14 +216,27 @@ end)
 
 -- Lifecycle --------------------------------------------------------------------------
 
+local function addSuggestions()
+    if HudConfig.ToggleCommand then
+        TriggerEvent('chat:addSuggestion', '/' .. HudConfig.ToggleCommand, 'Show or hide the HUD')
+    end
+    if #postals > 0 and HudConfig.Postals.Command then
+        TriggerEvent('chat:addSuggestion', '/' .. HudConfig.Postals.Command, 'Set a waypoint to a postal (no code clears it)',
+            { { name = 'code (optional)', help = 'Postal code, e.g. 101' } })
+    end
+end
+
 TFC.OnPlayerLoaded(function()
     last = {}
+    postalFrom = nil
+    addSuggestions()
     SendNUIMessage({
         action = 'init',
         config = {
             timeSource = HudConfig.TimeSource,
             use24Hour = HudConfig.Use24Hour,
             showLocation = HudConfig.ShowLocation,
+            showPostal = #postals > 0,
         },
         anchor = minimapAnchor(),
     })
@@ -140,6 +250,8 @@ end)
 TFC.OnPlayerUnloaded(function()
     setVisible(false)
 end)
+
+loadPostals()
 
 CreateThread(function()
     local anchorCheck = 0

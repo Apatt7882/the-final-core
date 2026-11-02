@@ -12,6 +12,18 @@ HudConfig = {
     ---Show the street/area display next to the minimap.
     ShowLocation = true,
 
+    ---Nearest postal, shown in the location box. Uses the same JSON format as the
+    ---nearest-postal resource and postal map packs: [{ "code": "101", "x": 0.0, "y": 0.0 }, ...]
+    ---Copy your map's postal file to tfc-hud/data/postals.json. Missing file = postal hidden.
+    Postals = {
+        Enabled = true,
+        File = 'data/postals.json',
+        ---/postal <code> sets a waypoint; /postal on its own clears it. false to disable.
+        Command = 'postal',
+        ---The waypoint clears itself within this many metres of the postal.
+        ArriveDistance = 50.0,
+    },
+
     ---Chat command that toggles the HUD for this player. Set to false to disable.
     ToggleCommand = 'hud',
 

@@ -110,10 +110,12 @@ TFC.Callback.Register('multichar:select', function(src, charId)
 end, { rateLimit = 1500 })
 
 if MulticharConfig.LogoutCommand then
-    RegisterCommand(MulticharConfig.LogoutCommand, function(src)
+    TFC.RegisterCommand(MulticharConfig.LogoutCommand, {
+        help = 'Return to character select',
+    }, function(src)
         if src == 0 or selecting[src] then return end
         if CORE:UnloadCharacter(src) then
             open(src)
         end
-    end, false)
+    end)
 end

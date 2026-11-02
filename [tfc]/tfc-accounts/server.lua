@@ -53,7 +53,7 @@ CreateThread(function()
     end
     tablesReady = true
 
-    TFC.RegisterModule({ name = 'accounts', version = '0.1.0' }, function()
+    TFC.RegisterModule({ name = 'accounts', version = '0.1.1' }, function()
         TFC.Log.Info('accounts ready: %s', table.concat((function()
             local names = {}
             for name in pairs(Accounts) do names[#names + 1] = name end
@@ -315,8 +315,17 @@ end)
 
 -- Commands --------------------------------------------------------------------------------
 
--- /money : your balances (anyone)
-RegisterCommand('money', function(src)
+local ACCOUNT_HELP = 'cash, bank or credit'
+
+local function reply(src, ok, msg)
+    if src == 0 then
+        TFC.Log.Info(msg)
+    else
+        TFC.UI.Notify(src, { title = 'Money', description = msg, type = ok and 'success' or 'error' })
+    end
+end
+
+TFC.RegisterCommand('money', { help = 'Show your cash, bank and credit balances' }, function(src)
     if src == 0 then return end
     local b = GetBalances(src)
     if not b then return end
@@ -325,26 +334,62 @@ RegisterCommand('money', function(src)
         if b[name] then parts[#parts + 1] = ('%s %s'):format(Accounts[name].label, formatMoney(b[name])) end
     end
     TFC.UI.Notify(src, { title = 'Balances', description = table.concat(parts, '  |  '), type = 'inform' })
-end, false)
+end)
 
--- /repaycredit [amount] : pay credit back from bank (anyone)
-RegisterCommand('repaycredit', function(src, args)
+TFC.RegisterCommand('repaycredit', {
+    help = 'Pay back credit from your bank account',
+    params = { { name = 'amount', help = 'Whole dollars; leave empty to repay everything', optional = true } },
+}, function(src, args)
     if src == 0 then return end
     local ok, result = RepayCredit(src, args[1])
     if not ok then TFC.UI.Notify(src, { title = 'Credit', description = result, type = 'error' }) end
-end, false)
+end)
 
--- /givemoney <id> <account> <amount>  and  /takemoney <id> <account> <amount>  (ACE restricted)
-local function adminMoney(add)
+---@param verb 'give'|'take'|'set'
+local function adminMoney(verb)
     return function(src, args)
-        local target, account, amount = tonumber(args[1]), args[2], args[3]
-        local fn = add and AddMoney or RemoveMoney
-        local ok, result = fn(target, account, amount, add and 'admin give' or 'admin take')
-        local msg = ok and ('%s %s: now %s'):format(GetPlayerName(target) or target, account, formatMoney(result))
-            or ('failed: %s'):format(result)
+        local target = TFC.ResolveTarget(src, args[1])
+        if not target then return reply(src, false, ('no player with ID %s is online'):format(tostring(args[1]))) end
 
-        if src == 0 then TFC.Log.Info(msg) else TFC.UI.Notify(src, { description = msg, type = ok and 'success' or 'error' }) end
+        local account, amount = args[2], args[3]
+        if not Accounts[account] then return reply(src, false, ('account must be %s'):format(ACCOUNT_HELP)) end
+
+        local reason = table.concat(args, ' ', 4)
+        if reason == '' then reason = 'admin ' .. verb end
+
+        local fn = verb == 'give' and AddMoney or verb == 'take' and RemoveMoney or SetBalance
+        local ok, result = fn(target, account, amount, reason)
+        if ok then
+            reply(src, true, ('%s %s: now %s'):format(GetPlayerName(target) or target, Accounts[account].label:lower(), formatMoney(result)))
+        else
+            reply(src, false, ('failed: %s'):format(result))
+        end
     end
 end
-RegisterCommand('givemoney', adminMoney(true), true)
-RegisterCommand('takemoney', adminMoney(false), true)
+
+local function adminParams(amountHelp)
+    return {
+        { name = 'id', help = 'Player server ID, or "me"' },
+        { name = 'account', help = ACCOUNT_HELP },
+        { name = 'amount', help = amountHelp },
+        { name = 'reason', help = 'Note for the transaction log', optional = true },
+    }
+end
+
+TFC.RegisterCommand('givemoney', {
+    help = 'Admin: add money to a player',
+    restricted = true,
+    params = adminParams('Whole dollars to add'),
+}, adminMoney('give'))
+
+TFC.RegisterCommand('takemoney', {
+    help = 'Admin: remove money from a player',
+    restricted = true,
+    params = adminParams('Whole dollars to remove'),
+}, adminMoney('take'))
+
+TFC.RegisterCommand('setmoney', {
+    help = 'Admin: set a balance exactly',
+    restricted = true,
+    params = adminParams('New balance (credit can be negative)'),
+}, adminMoney('set'))

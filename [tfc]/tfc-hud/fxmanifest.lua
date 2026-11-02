@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-hud'
 author 'Andrew'
 description 'The Final Core - HUD: date/time, money, job and location'
-version '0.1.0'
+version '0.2.0'
 
 dependency 'tfc-core'
 
@@ -18,6 +18,7 @@ client_script 'client.lua'
 ui_page 'html/index.html'
 
 files {
+    'data/*.json',
     'html/index.html',
     'html/style.css',
     'html/app.js',

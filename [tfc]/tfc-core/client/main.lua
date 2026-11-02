@@ -14,9 +14,21 @@ CreateThread(function()
     TriggerServerEvent('tfc:server:clientReady')
 end)
 
--- Only tfc-core listens, so a notification never shows twice.
+-- Only tfc-core listens to these, so nothing is ever shown twice.
 TFC.OnNet('tfc:client:notify', function(data)
     TFC.UI.Notify(data)
+end)
+
+TFC.OnNet('tfc:client:suggestions', function(list)
+    for _, s in ipairs(list or {}) do
+        TriggerEvent('chat:addSuggestion', s.name, s.help, s.params)
+    end
+end)
+
+TFC.OnNet('tfc:client:removeSuggestions', function(names)
+    for _, name in ipairs(names or {}) do
+        TriggerEvent('chat:removeSuggestion', name)
+    end
 end)
 
 TFC.OnNet('tfc:client:playerLoaded', function(data, spawn)

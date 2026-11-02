@@ -48,6 +48,7 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
    add_ace group.admin command.tfc allow
    add_ace group.admin command.givemoney allow
    add_ace group.admin command.takemoney allow
+   add_ace group.admin command.setmoney allow
    ```
 
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
@@ -74,6 +75,15 @@ Status: **phase 4a (accounts)**. Phases 1-3 (foundation, players and data, chara
 | In game | Drive around | Compass, street and area update as you move |
 | In game | Open the pause menu, then `/hud` | HUD hides in the menu; `/hud` toggles it |
 | Server console | `takemoney <your id> credit 500` | A red credit row appears (only shown while you owe) |
+
+**Postals:** copy your postal map's JSON (e.g. `new-postals.json` from nearest-postal or your postal map pack) to
+`tfc-hud/data/postals.json`. The HUD then shows the nearest postal beside the compass, and `/postal 123` sets a
+waypoint (`/postal` alone clears it; it also clears when you arrive). If you were running the nearest-postal resource,
+stop it so its own text doesn't appear twice.
+
+**Commands:** start typing `/givemoney`, `/takemoney` or `/setmoney` in chat to see the parameters. Admin commands are
+only suggested to players with the ACE permission. Use `me` as the ID for yourself, and add an optional reason at the end:
+`/givemoney me cash 500 event prize`.
 
 Settings (`tfc-hud/config.lua`): in-game vs real time, 12/24 hour, credit row, location on/off, toggle command.
 The job line reads the `tfc:job` state bag that `tfc-jobs` (phase 4b) will set:
@@ -156,6 +166,10 @@ Phase 3 adds: `exports['tfc-core']:DeleteCharacter(src, id)` and `GetConfig(key)
 Client: `exports['tfc-accounts']:GetBalance(account)`, `GetBalances()`, hook `moneyChanged(account, balance, delta, reason)`.
 Server hook: `moneyChanged(source, account, balance, delta, reason)`.
 Money changes are written to the database immediately (not batched), one atomic UPDATE each.
+
+Commands: `TFC.RegisterCommand(name, { help, params, restricted }, handler)` (server) registers a command with chat
+suggestions (only shown to players allowed to use it) and an automatic usage message when arguments are missing.
+`TFC.ResolveTarget(src, arg)` turns `"me"` or an ID into an online player's source.
 
 UI: `TFC.UI.Notify(data)` on the client, `TFC.UI.Notify(src, data)` on the server. Uses ox_lib if it's running.
 
