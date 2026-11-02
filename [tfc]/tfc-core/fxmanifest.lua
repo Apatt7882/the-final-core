@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-core'
 author 'Andrew'
 description 'The Final Core - a modular, performance-first roleplay framework'
-version '0.4.1'
+version '0.5.0'
 
 dependency 'oxmysql'
 
@@ -20,6 +20,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/lib/callback.lua',
     'server/lib/ui.lua',
+    'server/lib/permissions.lua',
     'server/lib/commands.lua',
     'server/adapter.lua',
     'server/db/schema.lua',

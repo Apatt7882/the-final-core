@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-accounts'
 author 'Andrew'
 description 'The Final Core - cash, bank and credit accounts'
-version '0.1.1'
+version '0.1.2'
 
 dependencies {
     'oxmysql',

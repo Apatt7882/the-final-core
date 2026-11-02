@@ -53,7 +53,7 @@ CreateThread(function()
     end
     tablesReady = true
 
-    TFC.RegisterModule({ name = 'accounts', version = '0.1.1' }, function()
+    TFC.RegisterModule({ name = 'accounts', version = '0.1.2' }, function()
         TFC.Log.Info('accounts ready: %s', table.concat((function()
             local names = {}
             for name in pairs(Accounts) do names[#names + 1] = name end
@@ -378,18 +378,18 @@ end
 
 TFC.RegisterCommand('givemoney', {
     help = 'Admin: add money to a player',
-    restricted = true,
+    permission = TFC.Permissions.Admin,
     params = adminParams('Whole dollars to add'),
 }, adminMoney('give'))
 
 TFC.RegisterCommand('takemoney', {
     help = 'Admin: remove money from a player',
-    restricted = true,
+    permission = TFC.Permissions.Admin,
     params = adminParams('Whole dollars to remove'),
 }, adminMoney('take'))
 
 TFC.RegisterCommand('setmoney', {
     help = 'Admin: set a balance exactly',
-    restricted = true,
+    permission = TFC.Permissions.Admin,
     params = adminParams('New balance (credit can be negative)'),
 }, adminMoney('set'))

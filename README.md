@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 4b (jobs)**. Phases 1-3 and 4a (accounts, HUD) are done. See the design doc for the full plan.
+Status: **phase 4c (permissions + Boss Menu)**. Phases 1-3, 4a (accounts, HUD) and 4b (jobs) are done. See the design doc for the full plan.
 
 ## Layout
 
@@ -27,7 +27,7 @@ Status: **phase 4b (jobs)**. Phases 1-3 and 4a (accounts, HUD) are done. See the
   tfc-multichar/      -- character select + creation (custom NUI in html/)
   tfc-accounts/       -- cash, bank and credit; transaction log
   tfc-hud/            -- date/time, money, job and location HUD (NUI)
-  tfc-jobs/           -- jobs, ranks, duty, paychecks, boss commands
+  tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-example/        -- template module: copy it to start a new one
 ```
 
@@ -47,14 +47,32 @@ Status: **phase 4b (jobs)**. Phases 1-3 and 4a (accounts, HUD) are done. See the
    ensure tfc-hud
    ensure tfc-example
 
-   add_ace group.admin command.tfc allow
-   add_ace group.admin command.givemoney allow
-   add_ace group.admin command.takemoney allow
-   add_ace group.admin command.setmoney allow
-   add_ace group.admin command.setjob allow
+   # One line gives admins every TFC admin feature (commands, Boss Menu for all jobs):
+   add_ace group.admin tfc.admin allow
+   # Make someone an admin (their license is in tfc_users):
+   add_principal identifier.license:<license> group.admin
    ```
 
+   The old per-command lines (`command.givemoney`, `command.setjob`, ...) are no longer needed and can be removed.
+
 3. Restart the server. The `tfc_users`, `tfc_user_identifiers` and `tfc_characters` tables are created automatically.
+
+## Check that phase 4c works (permissions + Boss Menu)
+
+Open `tfc-jobs/html/index.html` in a browser to preview the Boss Menu with sample data.
+
+| Who | Do | Expect |
+| --- | --- | --- |
+| Regular player | `/bossmenu` | "the Boss Menu is for bosses and admins"; admin commands not suggested in chat |
+| Admin (not in the job) | `/bossmenu` | Job dropdown with every job; can change anyone's rank and edit ranks; Hire tab hidden; pay read-only |
+| Boss (e.g. Chief of Police) | `/bossmenu` | Only their job; Hire tab lists players within 5 m; fire/promote/demote people below their rank; pay editable within the job's range |
+| Admin who is a boss | `/bossmenu` | Everything for that job |
+| Admin | Ranks tab: rename, toggle Boss, add a rank, remove an empty rank | Changes show on employees' HUDs immediately |
+| Anyone | Activity tab | Every hire, fire, rank and pay change with who did it |
+| Server console | `resetranks police` | Police ranks restored from `config.lua` |
+
+Ranks now live in the database (`tfc_job_grades`). `config.lua` only seeds a job the first time it's seen;
+use `resetranks <job>` to re-apply the file. Pay ranges per job are in `config.lua` (`payRange`).
 
 ## Check that phase 4b works (jobs)
 
@@ -186,6 +204,13 @@ Phase 3 adds: `exports['tfc-core']:DeleteCharacter(src, id)` and `GetConfig(key)
 Client: `exports['tfc-accounts']:GetBalance(account)`, `GetBalances()`, hook `moneyChanged(account, balance, delta, reason)`.
 Server hook: `moneyChanged(source, account, balance, delta, reason)`.
 Money changes are written to the database immediately (not batched), one atomic UPDATE each.
+
+### Permissions (phase 4c)
+
+`TFC.HasPermission(src, 'tfc.admin')`, `TFC.IsAdmin(src)` (server, any module), plus `exports['tfc-core']:HasPermission` /
+`IsAdmin`. Built-in permission names: `TFC.Permissions.Admin` (`tfc.admin`) and `TFC.Permissions.Mod` (`tfc.mod`).
+Commands can require one: `TFC.RegisterCommand(name, { permission = TFC.Permissions.Admin, ... }, fn)`; they are then
+only suggested to, and only run for, players who have it. The server console always has every permission.
 
 ### Jobs (phase 4b, `exports['tfc-jobs']`, server)
 

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Boss Menu</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+        <main class="window" role="dialog" aria-modal="true" aria-labelledby="title">
+            <header class="head">
+                <div class="head-left">
+                    <p class="brand">Boss Menu</p>
+                    <div class="title-row">
+                        <h1 id="title">Job</h1>
+                        <select id="job-select" class="hidden" aria-label="Choose job"></select>
+                    </div>
+                </div>
+                <div class="head-right">
+                    <span class="badge" id="access"></span>
+                    <button class="icon-btn" id="close" aria-label="Close">
+                        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <nav class="tabs" role="tablist">
+                <button class="tab" data-tab="overview" aria-selected="true">Overview</button>
+                <button class="tab" data-tab="employees">Employees</button>
+                <button class="tab" data-tab="hire">Hire</button>
+                <button class="tab" data-tab="ranks">Ranks &amp; pay</button>
+                <button class="tab" data-tab="activity">Activity</button>
+            </nav>
+
+            <section class="body">
+                <!-- Overview -->
+                <div class="panel" data-panel="overview">
+                    <div class="stats" id="stats"></div>
+                    <h2>Ranks</h2>
+                    <div class="bars" id="bars"></div>
+                </div>
+
+                <!-- Employees -->
+                <div class="panel hidden" data-panel="employees">
+                    <div class="toolbar">
+                        <input id="emp-search" placeholder="Search employees" autocomplete="off">
+                        <span class="muted" id="emp-count"></span>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>Name</th><th>Rank</th><th>Status</th><th class="num">Hours (7d)</th><th></th></tr></thead>
+                        <tbody id="emp-body"></tbody>
+                    </table>
+                    <p class="empty hidden" id="emp-empty">Nobody works here yet.</p>
+                </div>
+
+                <!-- Hire -->
+                <div class="panel hidden" data-panel="hire">
+                    <div class="toolbar">
+                        <span class="muted" id="hire-hint">Players standing next to you who don't work here.</span>
+                        <button class="btn btn-ghost" id="hire-refresh">Refresh</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>Name</th><th>Current job</th><th>Hire as</th><th></th></tr></thead>
+                        <tbody id="hire-body"></tbody>
+                    </table>
+                    <p class="empty hidden" id="hire-empty">Nobody nearby. Ask them to stand next to you, then refresh.</p>
+                </div>
+
+                <!-- Ranks -->
+                <div class="panel hidden" data-panel="ranks">
+                    <p class="muted" id="ranks-hint"></p>
+                    <table class="table">
+                        <thead><tr><th class="num">#</th><th>Rank</th><th>Pay per check</th><th>Boss</th><th class="num">Holders</th><th></th></tr></thead>
+                        <tbody id="ranks-body"></tbody>
+                    </table>
+                    <form class="add-rank hidden" id="add-rank" autocomplete="off">
+                        <h2>Add a rank</h2>
+                        <div class="row">
+                            <label>Name <input name="label" maxlength="48" required></label>
+                            <label>Pay <input name="pay" type="number" min="0" step="1" required></label>
+                            <label>Position <select name="position" id="add-position"></select></label>
+                            <button class="btn btn-primary" type="submit">Add rank</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Activity -->
+                <div class="panel hidden" data-panel="activity">
+                    <ul class="log" id="log"></ul>
+                    <p class="empty hidden" id="log-empty">No activity yet.</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Confirm dialog -->
+        <div class="confirm hidden" id="confirm" role="alertdialog" aria-modal="true">
+            <div class="confirm-card">
+                <p id="confirm-text"></p>
+                <div class="actions">
+                    <button class="btn btn-ghost" id="confirm-no">Cancel</button>
+                    <button class="btn btn-danger" id="confirm-yes">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast hidden" id="toast" role="status"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

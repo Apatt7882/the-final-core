@@ -23,6 +23,7 @@ local files = {
     side .. '/lib/ui.lua',
 }
 if side == 'server' then
+    files[#files + 1] = 'server/lib/permissions.lua'
     files[#files + 1] = 'server/lib/commands.lua'
 end
 

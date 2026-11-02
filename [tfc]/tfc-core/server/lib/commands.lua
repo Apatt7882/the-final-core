@@ -2,7 +2,7 @@
 --
 --   TFC.RegisterCommand('givemoney', {
 --       help = 'Give money to a player',
---       restricted = true,                       -- needs ACE: command.givemoney
+--       permission = 'tfc.admin',                -- or restricted = true (ACE command.givemoney)
 --       params = {
 --           { name = 'id', help = 'Player server ID, or "me"' },
 --           { name = 'account', help = 'cash, bank or credit' },
@@ -22,13 +22,16 @@
 ---@class TFCCommandDef
 ---@field help string
 ---@field params? TFCCommandParam[]
----@field restricted? boolean
+---@field restricted? boolean ACE-restricted by FiveM (command.<name>)
+---@field permission? string checked by TFC, e.g. 'tfc.admin' (one ACE line covers every admin command)
 
 ---@type table<string, TFCCommandDef>
 local commands = {}
 
 local function allowed(src, name, def)
-    return not def.restricted or IsPlayerAceAllowed(tostring(src), 'command.' .. name)
+    if def.permission and not TFC.HasPermission(src, def.permission) then return false end
+    if def.restricted and src ~= 0 and not IsPlayerAceAllowed(tostring(src), 'command.' .. name) then return false end
+    return true
 end
 
 local function usage(name, def)
@@ -69,6 +72,11 @@ function TFC.RegisterCommand(name, def, handler)
     end
 
     RegisterCommand(name, function(src, args, raw)
+        if def.permission and not TFC.HasPermission(src, def.permission) then
+            TFC.UI.Notify(src, { description = 'You do not have permission to use that', type = 'error' })
+            return
+        end
+
         if #args < required then
             local text = ('Usage: %s'):format(usage(name, def))
             if src == 0 then

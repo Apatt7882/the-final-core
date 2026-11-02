@@ -1,5 +1,8 @@
 TFC.Log.Info('%s v%s starting', TFC.Name, TFC.Version)
 
+exports('HasPermission', TFC.HasPermission)
+exports('IsAdmin', TFC.IsAdmin)
+
 exports('GetVersion', function()
     return TFC.Version
 end)
@@ -34,10 +37,10 @@ local function printModules()
 end
 
 -- Admin command. From the server console: `tfc modules`, `tfc version`.
--- Players need: add_ace group.admin command.tfc allow
+-- Players need the tfc.admin permission.
 TFC.RegisterCommand('tfc', {
     help = 'The Final Core admin tools',
-    restricted = true,
+    permission = TFC.Permissions.Admin,
     params = { { name = 'action', help = 'modules or version' } },
 }, function(_, args)
     local sub = args[1]
