@@ -62,6 +62,7 @@ function setTab(tab) {
     document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === tab)));
     document.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== tab));
     if (tab === 'items') renderItems();
+    else if (tab === 'world') loadWorld();
     else renderPlayers();
 }
 
@@ -254,6 +255,61 @@ $('give').addEventListener('click', async () => {
     if (r.players) S.players = r.players;
     setMsg($('i-msg'), r.ok ? r.message : r.error, r.ok);
 });
+
+
+// World -------------------------------------------------------------------------------------
+
+const W = { state: null, busy: false, timer: null };
+const pad = (n) => String(n).padStart(2, '0');
+
+function renderWorld() {
+    const w = W.state;
+    $('w-off').classList.toggle('hidden', !!w);
+    document.querySelectorAll('.world-card').forEach((c) => c.classList.toggle('hidden', !w));
+    if (!w) return;
+    $('w-now').textContent = `${pad(w.hour)}:${pad(w.minute)}${w.frozen ? ' (frozen)' : ''}`;
+    $('w-freeze').checked = !!w.frozen;
+    $('w-blackout').checked = !!w.blackout;
+    $('w-snow').checked = !!w.snow;
+    const current = (w.weathers || []).find((x) => x.id === w.weather);
+    $('w-weather-now').textContent = w.snow ? 'Holiday snow' : (current ? current.label : w.weather);
+    $('w-weathers').innerHTML = (w.weathers || []).map((x) =>
+        `<button data-w="${esc(x.id)}" class="${x.id === w.weather ? 'on' : ''}"${w.snow ? ' disabled' : ''}>${esc(x.label)}</button>`).join('');
+    $('w-weathers').querySelectorAll('[data-w]').forEach((b) => b.addEventListener('click', () => worldSet('weather', b.dataset.w)));
+}
+
+async function loadWorld() {
+    const r = await nui('world', { action: 'state' });
+    W.state = r && r.ok ? r : null;
+    if (W.state) { $('w-hour').value = W.state.hour; $('w-minute').value = pad(W.state.minute); }
+    renderWorld();
+    clearInterval(W.timer);
+    // Keep the clock display fresh while the tab is open.
+    W.timer = setInterval(async () => {
+        if (S.tab !== 'world' || $('backdrop').classList.contains('hidden')) return clearInterval(W.timer);
+        const s = await nui('world', { action: 'state' });
+        if (s && s.ok) { W.state = s; renderWorld(); }
+    }, 4000);
+}
+
+async function worldSet(action, a, b) {
+    if (W.busy) return;
+    W.busy = true;
+    const r = await nui('world', { action, a, b });
+    W.busy = false;
+    if (r && r.weathers) W.state = r;
+    setMsg($('w-msg'), r && r.ok ? 'Done.' : ((r && r.error) || 'something went wrong'), r && r.ok);
+    renderWorld();
+}
+
+$('w-set-time').addEventListener('click', () => worldSet('time', Number($('w-hour').value), Number($('w-minute').value)));
+document.querySelectorAll('#w-quick [data-h]').forEach((b) => b.addEventListener('click', () => {
+    $('w-hour').value = b.dataset.h; $('w-minute').value = pad(b.dataset.m);
+    worldSet('time', Number(b.dataset.h), Number(b.dataset.m));
+}));
+$('w-freeze').addEventListener('change', (e) => worldSet('freeze', e.target.checked));
+$('w-blackout').addEventListener('change', (e) => worldSet('blackout', e.target.checked));
+$('w-snow').addEventListener('change', (e) => worldSet('snow', e.target.checked));
 
 // Messages ----------------------------------------------------------------------------------------
 

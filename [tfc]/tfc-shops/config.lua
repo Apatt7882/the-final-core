@@ -3,7 +3,8 @@
 -- `Locations` below is only used to fill the database the first time the resource starts.
 
 ShopsConfig = {
-    -- Which clock opening hours use: 'game' (the GTA clock players see) or 'real' (server time).
+    -- Which clock opening hours use: 'game' (the GTA clock players see; read from tfc-world when
+    -- it's running) or 'real' (the server's real time).
     Clock = 'game',
 
     InteractDistance = 2.0,  -- how close to stand to the shopkeeper to press E

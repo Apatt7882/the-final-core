@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 7 (police, EMS, admin tools)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 8a (world sync)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -27,6 +27,7 @@ Status: **phase 7 (police, EMS, admin tools)**. Phases 1-4 are done; phase 5 (ES
   tfc-multichar/      -- character select + creation (custom NUI in html/)
   tfc-accounts/       -- cash, bank and credit; transaction log
   tfc-hud/            -- date/time, money, job, location and who's-on HUD (NUI)
+  tfc-world/          -- synced time and weather, blackout, holiday snow
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
   tfc-shops/          -- stores, dealers, armories; buy/sell, stock, admin shop manager (NUI)
@@ -46,6 +47,7 @@ Status: **phase 7 (police, EMS, admin tools)**. Phases 1-4 are done; phase 5 (ES
    ensure oxmysql
    ensure ox_lib          # optional: nicer notifications and prompts; falls back to GTA's own
    ensure tfc-core
+   ensure tfc-world
    ensure tfc-multichar
    ensure tfc-inventory
    ensure tfc-accounts
@@ -79,6 +81,31 @@ Status: **phase 7 (police, EMS, admin tools)**. Phases 1-4 are done; phase 5 (ES
 
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
+
+## Check that phase 8a works (world sync)
+
+Everyone now sees the same time and weather. Time runs at GTA's pace (a day every 48 minutes); weather stays as set
+until an admin changes it. Time, weather, blackout and snow survive server restarts.
+
+**vMenu:** turn off its own sync in `server.cfg` or the two fight over the clock and weather:
+
+```cfg
+setr vmenu_enable_time_sync false
+setr vmenu_enable_weather_sync false
+```
+
+| Do | Expect |
+| --- | --- |
+| Start the server | `module world v0.1.0 ready`, `world ready: 08:00, CLEAR` (first start) |
+| Two players compare the HUD clock | Same time |
+| F10 > World > Noon 12:00 | Everyone's clock jumps to 12:00 |
+| Freeze time | Clock stops for everyone until unfrozen |
+| Weather > Rain | Rain blends in over ~15 s for everyone |
+| Blackout on | City lights go out (car lights still work) |
+| Holiday snow on | Snow on the ground, footprints and tyre tracks; weather switches to Christmas |
+| Restart the server | Same weather, blackout and snow; clock carries on from where it was |
+
+Shop hours (dealers, pawn shop) now use this shared clock on the server.
 
 ## Check that phase 7 works (police, EMS, admin)
 
@@ -418,6 +445,11 @@ Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 
 Server hooks: `shopPurchase(source, shopId, item, count, total, payment)`, `shopSale(source, shopId, item, count, total, account)`.
 Admin: `/shops`.
+
+### World (phase 8a, `exports['tfc-world']`, server)
+
+`GetTime()` -> `{ hour, minute }`, `SetTime(h, m)`, `FreezeTime(bool)`, `GetWeather()`, `SetWeather(type)`,
+`SetBlackout(bool)`, `SetSnow(bool)`, `GetState()`. Clients read `GlobalState['tfc:world']`.
 
 ### Medical, police, admin (phase 7, server exports)
 

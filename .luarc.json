@@ -23,6 +23,7 @@
         "AdminConfig",
         "AdminClient",
         "AdminNoclip",
+        "WorldConfig",
         "source",
         "exports",
         "Citizen",

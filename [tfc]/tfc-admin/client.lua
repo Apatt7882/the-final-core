@@ -235,6 +235,13 @@ RegisterNUICallback('action', function(d, cb)
     cb(r)
 end)
 
+-- World tab: talks to tfc-world's server directly (it checks admin itself).
+RegisterNUICallback('world', function(d, cb)
+    if GetResourceState('tfc-world') ~= 'started' then return cb({ ok = false, error = 'tfc-world is not running' }) end
+    if d.action == 'state' then return cb(TFC.Callback.Await('world:state') or NO_RESPONSE) end
+    cb(TFC.Callback.Await('world:set', d.action, d.a, d.b) or NO_RESPONSE)
+end)
+
 RegisterNUICallback('self', function(d, cb)
     if d.action == 'noclip' then
         closeMenu()

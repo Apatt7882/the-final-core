@@ -26,6 +26,7 @@
             <nav class="tabs" role="tablist">
                 <button class="tab" data-tab="players" aria-selected="true">Players <span class="count" id="player-count"></span></button>
                 <button class="tab" data-tab="items">Items <span class="count" id="item-count"></span></button>
+                <button class="tab" data-tab="world">World</button>
             </nav>
 
             <!-- Players -->
@@ -116,6 +117,52 @@
                     </div>
                     <p class="msg" id="i-msg" role="status"></p>
                 </aside>
+            </section>
+
+            <!-- World -->
+            <section class="body world hidden" data-panel="world">
+                <div class="world-col">
+                    <p class="world-off hidden" id="w-off">tfc-world is not running on the server.</p>
+
+                    <div class="world-card">
+                        <div class="world-head">
+                            <h3>Time</h3>
+                            <span class="now" id="w-now">--:--</span>
+                        </div>
+                        <div class="time-row">
+                            <input id="w-hour" type="number" min="0" max="23" value="12" aria-label="Hour">
+                            <span class="colon">:</span>
+                            <input id="w-minute" type="number" min="0" max="59" value="00" aria-label="Minute">
+                            <button class="secondary" id="w-set-time">Set time</button>
+                        </div>
+                        <div class="quick" id="w-quick">
+                            <button class="ghost small" data-h="6" data-m="0">Dawn 06:00</button>
+                            <button class="ghost small" data-h="9" data-m="0">Morning 09:00</button>
+                            <button class="ghost small" data-h="12" data-m="0">Noon 12:00</button>
+                            <button class="ghost small" data-h="18" data-m="0">Evening 18:00</button>
+                            <button class="ghost small" data-h="21" data-m="0">Dusk 21:00</button>
+                            <button class="ghost small" data-h="0" data-m="0">Midnight</button>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="w-freeze"><span class="switch"></span>Freeze time</label>
+                    </div>
+
+                    <div class="world-card">
+                        <div class="world-head">
+                            <h3>Weather</h3>
+                            <span class="now" id="w-weather-now"></span>
+                        </div>
+                        <div class="weather-grid" id="w-weathers"></div>
+                    </div>
+
+                    <div class="world-card">
+                        <h3>Events</h3>
+                        <label class="toggle"><input type="checkbox" id="w-blackout"><span class="switch"></span>
+                            <span><strong>Blackout</strong><span class="hint">City lights out (vehicle lights stay on)</span></span></label>
+                        <label class="toggle"><input type="checkbox" id="w-snow"><span class="switch"></span>
+                            <span><strong>Holiday snow</strong><span class="hint">Snow on the ground and Christmas weather; overrides the weather above</span></span></label>
+                    </div>
+                    <p class="msg" id="w-msg" role="status"></p>
+                </div>
             </section>
         </main>
     </div>

@@ -92,6 +92,11 @@ ShopsSrv.IsOpenAt = isOpenAt
 
 local function currentHour(clientHour)
     if Cfg.Clock == 'real' then return tonumber(os.date('%H')) end
+    -- With tfc-world running, the server knows the game time itself (no need to trust the client).
+    if GetResourceState('tfc-world') == 'started' then
+        local t = exports['tfc-world']:GetTime()
+        if t and t.hour then return t.hour end
+    end
     local h = math.tointeger(tonumber(clientHour))
     if h and h >= 0 and h <= 23 then return h end
     return nil
