@@ -229,6 +229,25 @@ if countsOn then
     end)
 end
 
+-- AOP and priority (tfc-world publishes GlobalState['tfc:aop']) --------------------------
+
+local function sendAop(value)
+    SendNUIMessage({ action = 'set', field = 'aop', value = type(value) == 'table' and value or false })
+end
+
+AddStateBagChangeHandler('tfc:aop', 'global', function(_, _, value)
+    sendAop(value)
+end)
+
+-- Notifications (every TFC resource sends theirs here; shown top centre) -------------------
+
+AddEventHandler('tfc-hud:client:notify', function(data)
+    if type(data) ~= 'table' then return end
+    SendNUIMessage({ action = 'notify', data = {
+        title = data.title, description = data.description, type = data.type, duration = data.duration,
+    } })
+end)
+
 -- Lifecycle --------------------------------------------------------------------------
 
 local function addSuggestions()
@@ -261,6 +280,7 @@ TFC.OnPlayerLoaded(function()
     end
     sendJob(LocalPlayer.state['tfc:job'])
     sendCounts(GlobalState['tfc:counts'])
+    sendAop(GlobalState['tfc:aop'])
 end)
 
 TFC.OnPlayerUnloaded(function()

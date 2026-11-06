@@ -11,7 +11,7 @@
 FinanceConfig = {
     Accountant = {
         label = 'City Accountant',
-        coords = vector4(-541.9, -207.2, 38.22, 210.0),   -- inside the Government Center
+        coords = vector4(-517.18, -211.12, 38.17, 119.0),   -- inside the Government Center
         ped = 'a_m_m_business_01', scenario = 'WORLD_HUMAN_CLIPBOARD',
     },
     InteractDistance = 2.0,

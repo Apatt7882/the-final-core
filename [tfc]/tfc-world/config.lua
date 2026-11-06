@@ -13,6 +13,24 @@ WorldConfig = {
     StartTime = { hour = 8, minute = 0 },
     StartWeather = 'CLEAR',
 
+    -- Area of play shown on everyone's HUD. Admins change it in the admin menu (World tab).
+    Aop = {
+        Default = 'Los Santos',
+        -- Quick picks in the admin menu (any text can be typed, e.g. "Los Santos & Sandy Shores").
+        Presets = { 'Los Santos', 'Blaine County', 'Sandy Shores', 'Paleto Bay', 'Statewide' },
+    },
+
+    -- City and County priority, shown on the HUD. Admins: admin menu (World tab) or the commands.
+    -- On-duty players in CommandJobs can use every command; anyone can `start` when AnyoneCanStart.
+    --   /cityprio start | stop | cooldown [minutes] | hold | reset      (same for /countyprio)
+    -- stop puts it on cooldown for CooldownMinutes; reset makes it available straight away.
+    Priority = {
+        CooldownMinutes = 20,
+        CommandJobs = { 'police' },
+        AnyoneCanStart = true,
+        Commands = { city = 'cityprio', county = 'countyprio' },
+    },
+
     -- Seconds a weather change takes to blend in.
     TransitionSeconds = 15,
 

@@ -29,6 +29,7 @@ const S = {
     me: null,
     players: [],
     items: [],
+    jobs: [],
     maxGive: 1000,
     imagePath: '',
     tab: 'players',
@@ -135,11 +136,41 @@ function renderDetail() {
         const a = b.dataset.act;
         b.disabled = (self && ['bring', 'spectate', 'freeze'].includes(a)) || (!p.loaded && ['revive', 'heal'].includes(a));
     });
+    renderJobPicker(p);
     $('freeze-btn').textContent = p.frozen ? 'Unfreeze' : 'Freeze';
     $('freeze-btn').classList.toggle('active', !!p.frozen);
     $('give-to').disabled = !p.loaded;
     $('kick').disabled = self;
 }
+
+// Set job: pick a job, then a rank. Starts on the player's current job.
+let jobFor = null;
+function renderJobPicker(p) {
+    const jobSel = $('job-select');
+    const disabled = !p.loaded || S.jobs.length === 0;
+    if (jobFor !== p.id) {
+        jobFor = p.id;
+        jobSel.innerHTML = S.jobs.map((j) => `<option value="${esc(j.name)}">${esc(j.label)}</option>`).join('');
+        if (p.jobName) jobSel.value = p.jobName;
+        renderGrades(p.jobName === jobSel.value ? p.jobGrade : null);
+    }
+    jobSel.disabled = disabled;
+    $('grade-select').disabled = disabled;
+    $('set-job').disabled = disabled;
+}
+
+function renderGrades(selected) {
+    const job = S.jobs.find((j) => j.name === $('job-select').value);
+    const grades = job ? job.grades : [];
+    $('grade-select').innerHTML = grades.map((g) => `<option value="${g.grade}">${esc(g.label)} · ${money(g.pay)}</option>`).join('');
+    if (selected !== null && selected !== undefined && grades.some((g) => g.grade === selected)) $('grade-select').value = String(selected);
+}
+
+$('job-select').addEventListener('change', () => renderGrades(null));
+$('set-job').addEventListener('click', () => {
+    jobFor = null; // re-read their job after the change
+    act('setjob', { job: $('job-select').value, grade: Number($('grade-select').value) });
+});
 
 async function act(action, data) {
     if (S.busy || S.selected === null) return;
@@ -178,7 +209,7 @@ $('kick').addEventListener('click', () => {
 $('p-search').addEventListener('input', (e) => { S.search = e.target.value; renderPlayers(); });
 $('refresh').addEventListener('click', async () => {
     const r = await nui('refresh');
-    if (r && r.ok) { S.players = r.players; S.items = r.items; renderPlayers(); }
+    if (r && r.ok) { S.players = r.players; S.items = r.items; S.jobs = r.jobs || S.jobs; jobFor = null; renderPlayers(); }
 });
 
 // Items -------------------------------------------------------------------------------------
@@ -262,11 +293,28 @@ $('give').addEventListener('click', async () => {
 const W = { state: null, busy: false, timer: null };
 const pad = (n) => String(n).padStart(2, '0');
 
+const PRIO = [['available', 'Available'], ['active', 'In progress'], ['cooldown', 'Cooldown'], ['hold', 'On hold']];
+
 function renderWorld() {
     const w = W.state;
     $('w-off').classList.toggle('hidden', !!w);
     document.querySelectorAll('.world-card').forEach((c) => c.classList.toggle('hidden', !w));
     if (!w) return;
+
+    $('w-aop-now').textContent = w.aop || '';
+    if (document.activeElement !== $('w-aop')) $('w-aop').value = '';
+    $('w-aop-presets').innerHTML = (w.aopPresets || []).map((a) => `<button class="ghost small" data-aop="${esc(a)}">${esc(a)}</button>`).join('');
+    $('w-aop-presets').querySelectorAll('[data-aop]').forEach((b) => b.addEventListener('click', () => worldSet('aop', b.dataset.aop)));
+    if (!W.coolSet && w.cooldownMinutes) { $('w-cool').value = w.cooldownMinutes; W.coolSet = true; }
+    const prio = w.prio || {};
+    $('w-prio').innerHTML = [['city', 'City'], ['county', 'County']].map(([zone, name]) => {
+        const p = prio[zone] || {};
+        return `<div class="prio-line"><span class="zone">${name}<small>${esc(p.label || '')}${p.detail ? ' · ' + esc(p.detail) : ''}</small></span>
+            <div class="prio-btns">${PRIO.map(([st, l]) => `<button class="${st}${p.status === st ? ' on' : ''}" data-zone="${zone}" data-st="${st}">${l}</button>`).join('')}</div></div>`;
+    }).join('');
+    $('w-prio').querySelectorAll('[data-zone]').forEach((b) => b.addEventListener('click', () =>
+        worldSet('prio', b.dataset.zone, { status: b.dataset.st, minutes: Number($('w-cool').value) || undefined })));
+
     $('w-now').textContent = `${pad(w.hour)}:${pad(w.minute)}${w.frozen ? ' (frozen)' : ''}`;
     $('w-freeze').checked = !!w.frozen;
     $('w-blackout').checked = !!w.blackout;
@@ -302,6 +350,12 @@ async function worldSet(action, a, b) {
     renderWorld();
 }
 
+$('w-set-aop').addEventListener('click', () => {
+    const v = $('w-aop').value.trim();
+    if (v) worldSet('aop', v); else setMsg($('w-msg'), 'Type an area of play first.', false);
+});
+$('w-aop').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('w-set-aop').click(); });
+
 $('w-set-time').addEventListener('click', () => worldSet('time', Number($('w-hour').value), Number($('w-minute').value)));
 document.querySelectorAll('#w-quick [data-h]').forEach((b) => b.addEventListener('click', () => {
     $('w-hour').value = b.dataset.h; $('w-minute').value = pad(b.dataset.m);
@@ -319,6 +373,8 @@ window.addEventListener('message', (e) => {
         S.me = m.data.me;
         S.players = m.data.players;
         S.items = m.data.items;
+        S.jobs = m.data.jobs || [];
+        jobFor = null;
         S.maxGive = m.data.maxGive;
         S.imagePath = m.imagePath || '';
         if (S.selected !== null && !player(S.selected)) S.selected = null;

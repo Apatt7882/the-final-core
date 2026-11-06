@@ -9,7 +9,14 @@ TFC.UI = {}
 function TFC.UI.Notify(data)
     if type(data) == 'string' then data = { description = data } end
 
+    -- tfc-hud shows notifications at the top centre, clear of the rest of the HUD.
+    if GetResourceState('tfc-hud') == 'started' then
+        TriggerEvent('tfc-hud:client:notify', data)
+        return
+    end
+
     if GetResourceState('ox_lib') == 'started' then
+        data.position = data.position or 'top'
         TriggerEvent('ox_lib:notify', data)
         return
     end

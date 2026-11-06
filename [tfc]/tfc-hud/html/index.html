@@ -47,8 +47,9 @@
             </div>
         </section>
 
-        <!-- Bottom left, beside the minimap: who's on, then location -->
+        <!-- Bottom left, beside the minimap: AOP and priority, who's on, then location -->
         <div class="corner" id="corner">
+            <section class="aop hidden" id="aop" aria-label="AOP and priority"></section>
             <section class="counts hidden" id="counts" aria-label="Who's on"></section>
 
             <section class="location" id="location" aria-label="Location">
@@ -64,6 +65,9 @@
             </section>
         </div>
     </div>
+
+    <!-- Notifications from every TFC resource (top centre, shown even with the HUD hidden) -->
+    <div class="toasts" id="toasts" aria-live="polite"></div>
 
     <script src="app.js"></script>
 </body>

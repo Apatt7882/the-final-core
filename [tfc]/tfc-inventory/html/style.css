@@ -287,3 +287,20 @@ html, body {
 .slot .cond span { display: block; height: 100%; background: #4cc38a; }
 .slot .cond span.low { background: #e8a33d; }
 .slot .cond span.zero { background: #e5484d; }
+
+/* Wallet (left): cash and cards only ------------------------------------------------------ */
+
+.wallet-panel .panel-head { margin-bottom: calc(16 * var(--u)); }
+.wallet-grid { grid-template-columns: var(--slot-size); max-height: none; overflow: visible; padding-right: 0; }
+.wallet-panel .panel-title { font-size: calc(15 * var(--u)); white-space: nowrap; }
+.slot.wallet { border-style: dashed; border-color: rgba(111, 211, 159, 0.22); }
+.slot.wallet.filled { border-style: solid; }
+.wallet-divider {
+    grid-column: 1 / -1;
+    margin-top: calc(6 * var(--u));
+    font-size: calc(12 * var(--u));
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+}

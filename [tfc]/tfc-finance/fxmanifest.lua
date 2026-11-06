@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-finance'
 author 'Andrew'
 description 'The Final Core - stock market and the City Accountant'
-version '0.1.0'
+version '0.1.1'
 
 dependencies {
     'oxmysql',

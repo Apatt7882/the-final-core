@@ -63,6 +63,13 @@
                             <button class="secondary wide" id="give-to">Give item…</button>
                         </div>
 
+                        <label class="field-label" for="job-select">Job</label>
+                        <div class="job-row">
+                            <select id="job-select" aria-label="Job"></select>
+                            <select id="grade-select" aria-label="Rank"></select>
+                            <button class="secondary" id="set-job">Set</button>
+                        </div>
+
                         <label class="field-label" for="kick-reason">Kick</label>
                         <div class="kick-row">
                             <input id="kick-reason" placeholder="Reason" maxlength="120" autocomplete="off">
@@ -123,6 +130,27 @@
             <section class="body world hidden" data-panel="world">
                 <div class="world-col">
                     <p class="world-off hidden" id="w-off">tfc-world is not running on the server.</p>
+
+                    <div class="world-card">
+                        <div class="world-head">
+                            <h3>Area of play</h3>
+                            <span class="now" id="w-aop-now"></span>
+                        </div>
+                        <div class="aop-row">
+                            <input id="w-aop" maxlength="60" placeholder="e.g. Los Santos &amp; Sandy Shores" autocomplete="off">
+                            <button class="secondary" id="w-set-aop">Set AOP</button>
+                        </div>
+                        <div class="quick" id="w-aop-presets"></div>
+                    </div>
+
+                    <div class="world-card">
+                        <h3>Priority</h3>
+                        <div class="prio-grid" id="w-prio"></div>
+                        <div class="cool-row">
+                            <label for="w-cool">Cooldown minutes</label>
+                            <input id="w-cool" type="number" min="1" max="180" value="20">
+                        </div>
+                    </div>
 
                     <div class="world-card">
                         <div class="world-head">

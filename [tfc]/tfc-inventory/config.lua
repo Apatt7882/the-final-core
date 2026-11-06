@@ -1,6 +1,8 @@
 InventoryConfig = {
     ---Player inventory size. Weights are in grams (1000 = 1 kg).
-    Player = { slots = 40, maxWeight = 30000 },
+    ---`wallet` = extra slots on the left for cash and cards only (items with `wallet = true`).
+    ---They count toward the weight and show up when the player is searched.
+    Player = { slots = 40, wallet = 6, maxWeight = 30000 },
 
     ---Hotbar: keys 1-5 use the item in slots 1-5.
     HotbarSlots = 5,

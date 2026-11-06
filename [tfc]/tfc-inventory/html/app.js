@@ -98,16 +98,17 @@ function toast(text) {
 
 // Rendering ----------------------------------------------------------------------------------
 
-function slotHtml(inv, slot, item, withKey) {
+function slotHtml(inv, slot, item, withKey, wallet) {
     const key = withKey && slot <= state.hotbar ? `<span class="key">${slot}</span>` : '';
-    if (!item) return `<div class="slot" data-inv="${esc(inv)}" data-slot="${slot}">${key}</div>`;
+    const w = wallet ? ' wallet' : '';
+    if (!item) return `<div class="slot${w}" data-inv="${esc(inv)}" data-slot="${slot}">${key}</div>`;
 
     const d = def(item.name);
     const img = `<img src="${esc(state.imagePath + item.name)}.png" alt="" data-fallback="${esc(initials(d.label))}">`;
     const cond = item.metadata && typeof item.metadata.durability === 'number'
         ? `<span class="cond"><span style="width:${Math.max(0, Math.min(100, item.metadata.durability))}%" class="${item.metadata.durability <= 0 ? 'zero' : item.metadata.durability < 30 ? 'low' : ''}"></span></span>`
         : '';
-    return `<div class="slot filled" data-inv="${esc(inv)}" data-slot="${slot}">
+    return `<div class="slot filled${w}" data-inv="${esc(inv)}" data-slot="${slot}">
         ${key}
         ${cond}
         <span class="count">${esc(countText(item))}</span>
@@ -146,9 +147,25 @@ function renderPanel(panel, inv, isPlayer) {
 
     const bySlot = {};
     for (const it of inv.items) bySlot[it.slot] = it;
+    // The last `wallet` slots are the wallet (cash and cards).
+    const wallet = inv.wallet || 0;
+    const main = inv.slots - wallet;
     const html = [];
-    for (let s = 1; s <= inv.slots; s++) html.push(slotHtml(inv.id, s, bySlot[s], isPlayer));
+    for (let s = 1; s <= main; s++) html.push(slotHtml(inv.id, s, bySlot[s], isPlayer));
+    if (wallet > 0 && !isPlayer) {
+        // Someone else's inventory (a search): show their wallet under the grid.
+        html.push('<div class="wallet-divider">Wallet</div>');
+        for (let s = main + 1; s <= inv.slots; s++) html.push(slotHtml(inv.id, s, bySlot[s], false, true));
+    }
     panel.querySelector('[data-grid]').innerHTML = html.join('');
+
+    if (isPlayer) {
+        const wp = $('panel-wallet');
+        wp.classList.toggle('hidden', wallet === 0);
+        const w = [];
+        for (let s = main + 1; s <= inv.slots; s++) w.push(slotHtml(inv.id, s, bySlot[s], false, true));
+        wp.querySelector('[data-grid]').innerHTML = w.join('');
+    }
 }
 
 function render() {
@@ -392,6 +409,7 @@ const sampleItems = {
     lockpick: { label: 'Lockpick', weight: 150, description: 'For locks that are not yours.' },
     radio: { label: 'Radio', weight: 600, description: 'A handheld two-way radio.' },
     id_card: { label: 'ID Card', weight: 10, description: 'Government-issued identification.' },
+    drivers_license: { label: "Driver's License", weight: 10, description: 'Classes are listed on the card.' },
     repair_kit: { label: 'Repair Kit', weight: 2500, description: 'Basic tools to get a car running again.' },
     pistol: { label: 'Pistol', weight: 900, description: 'Uses 9mm Rounds.', usable: true, weapon: true, clip: 12 },
     carbinerifle: { label: 'Carbine Rifle', weight: 3400, description: 'Uses 5.56 Rounds.', usable: true, weapon: true, clip: 30 },
@@ -403,7 +421,7 @@ const sampleItems = {
 };
 
 const sample = {
-    id: 'player:1', type: 'player', label: 'Dev Tester', slots: 40, maxWeight: 30000, weight: 0,
+    id: 'player:1', type: 'player', label: 'Dev Tester', slots: 46, wallet: 6, maxWeight: 30000, weight: 0,
     items: [
         { slot: 1, name: 'pistol', count: 1, metadata: { serial: 'TFC-7K2M9QXA', ammo: 9, durability: 86.4 } },
         { slot: 2, name: 'carbinerifle', count: 1, metadata: { serial: 'TFC-PL3NW8RD', ammo: 30, durability: 22 } },
@@ -414,8 +432,9 @@ const sample = {
         { slot: 14, name: 'joint', count: 3 },
         { slot: 15, name: 'coke_bag', count: 2 },
         { slot: 4, name: 'phone', count: 1, metadata: { number: '555-0142' } },
-        { slot: 6, name: 'cash', count: 1250 },
-        { slot: 7, name: 'id_card', count: 1, metadata: { name: 'Dev Tester', dob: '1994-03-12', cid: 'K7Q2M9PA' } },
+        { slot: 41, name: 'cash', count: 1250 },
+        { slot: 42, name: 'id_card', count: 1, metadata: { name: 'Dev Tester', dob: '1994-03-12', cid: 'K7Q2M9PA' } },
+        { slot: 43, name: 'drivers_license', count: 1, metadata: { name: 'Dev Tester', classes: 'C, M' } },
         { slot: 8, name: 'radio', count: 1 },
         { slot: 11, name: 'lockpick', count: 4 },
         { slot: 12, name: 'repair_kit', count: 2 },

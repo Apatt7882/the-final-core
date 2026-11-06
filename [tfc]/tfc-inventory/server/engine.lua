@@ -1,5 +1,7 @@
 -- Inventory engine: pure data operations on inventories (no database, no networking).
--- An inventory is { id, type, label, slots, maxWeight, weight, items = { [slot] = item }, dirty }
+-- An inventory is { id, type, label, slots, maxWeight, weight, items = { [slot] = item }, dirty, wallet }
+-- `wallet` (players only) = how many of the LAST slots are the wallet: only items with
+-- `wallet = true` (cash, ID and license cards) go there, and those items fill the wallet first.
 -- and an item is { name, count, metadata? }. Empty metadata is always stored as nil, so two
 -- items with "no metadata" compare equal and stack.
 
@@ -43,6 +45,33 @@ function Inv.Def(name)
     return Items[name]
 end
 
+---Is this a wallet item (cash, cards)?
+function Inv.IsWalletItem(name)
+    local def = Items[name]
+    return def ~= nil and def.wallet == true
+end
+
+---Is `slot` one of the wallet slots of `inv`?
+function Inv.IsWalletSlot(inv, slot)
+    local w = inv.wallet or 0
+    return w > 0 and slot > inv.slots - w and slot <= inv.slots
+end
+
+---Slots an item may be placed in automatically, in order: wallet items fill the wallet first,
+---everything else never goes in the wallet.
+local function slotOrder(inv, name)
+    local w = inv.wallet or 0
+    local main = inv.slots - w
+    local order = {}
+    if w > 0 and Inv.IsWalletItem(name) then
+        for slot = main + 1, inv.slots do order[#order + 1] = slot end
+    end
+    for slot = 1, main do order[#order + 1] = slot end
+    return order
+end
+
+local WALLET_ONLY = 'only cash and cards go in the wallet'
+
 local function maxStack(def)
     if not def.stack then return 1 end
     return def.maxStack or INF
@@ -76,6 +105,7 @@ function Inv.Create(id, kind, label, slots, maxWeight, items)
         dirty = false,
     }
     Inv.Recalc(inv)
+    inv.wallet = 0
     Inv.list[id] = inv
     return inv
 end
@@ -131,6 +161,7 @@ local function plan(inv, name, count, metadata, preferSlot)
 
     if preferSlot then
         if preferSlot < 1 or preferSlot > inv.slots then return nil, 'invalid slot' end
+        if Inv.IsWalletSlot(inv, preferSlot) and not Inv.IsWalletItem(name) then return nil, WALLET_ONLY end
         local here = inv.items[preferSlot]
         if not here then
             if count > max then return nil, 'that slot cannot hold that many' end
@@ -142,9 +173,11 @@ local function plan(inv, name, count, metadata, preferSlot)
         return nil, 'that slot is taken'
     end
 
+    local order = slotOrder(inv, name)
+
     -- Top up matching stacks first.
     if def.stack then
-        for slot = 1, inv.slots do
+        for _, slot in ipairs(order) do
             local here = inv.items[slot]
             if remaining == 0 then break end
             if here and here.name == name and equal(here.metadata, metadata) and here.count < max then
@@ -156,7 +189,7 @@ local function plan(inv, name, count, metadata, preferSlot)
     end
 
     -- Then empty slots.
-    for slot = 1, inv.slots do
+    for _, slot in ipairs(order) do
         if remaining == 0 then break end
         if not inv.items[slot] then
             local n = math.min(remaining, max)
@@ -269,6 +302,13 @@ function Inv.Move(from, fromSlot, to, toSlot, count)
     count = validCount(count) or item.count
     if count > item.count then count = item.count end
 
+    -- The wallet only holds cash and cards (checked both ways for swaps).
+    if Inv.IsWalletSlot(to, toSlot) and not Inv.IsWalletItem(item.name) then return false, WALLET_ONLY end
+    local other = to.items[toSlot]
+    if other and other.name ~= item.name and Inv.IsWalletSlot(from, fromSlot) and not Inv.IsWalletItem(other.name) then
+        return false, WALLET_ONLY
+    end
+
     local def = Items[item.name]
     local crossing = from ~= to
     local target = to.items[toSlot]
@@ -346,6 +386,7 @@ function Inv.View(inv)
         type = inv.type,
         label = inv.label,
         slots = inv.slots,
+        wallet = inv.wallet or 0,
         maxWeight = inv.maxWeight,
         weight = inv.weight,
         items = items,
@@ -381,4 +422,24 @@ function Inv.Deserialize(raw, slots, id)
         end
     end
     return items
+end
+
+---Move wallet items sitting in the main slots into free wallet slots (or onto matching stacks there).
+function Inv.TidyWallet(inv)
+    if (inv.wallet or 0) == 0 then return false end
+    local main = inv.slots - inv.wallet
+    local moved = false
+    for slot = 1, main do
+        local item = inv.items[slot]
+        if item and Inv.IsWalletItem(item.name) then
+            for w = main + 1, inv.slots do
+                local here = inv.items[w]
+                if not here or (Items[item.name].stack and here.name == item.name and equal(here.metadata, item.metadata)) then
+                    if Inv.Move(inv, slot, inv, w, item.count) then moved = true end
+                    break
+                end
+            end
+        end
+    end
+    return moved
 end

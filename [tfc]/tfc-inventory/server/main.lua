@@ -93,8 +93,12 @@ local function ensure(src)
     local ok, inv = pcall(function()
         local raw = MySQL.scalar.await('SELECT items FROM tfc_inventories WHERE id = ?', { id })
         local label = player:GetFullName()
-        local created = Inv.Create(id, 'player', label, Cfg.Player.slots, Cfg.Player.maxWeight,
-            Inv.Deserialize(raw, Cfg.Player.slots, id))
+        local wallet = math.max(0, math.tointeger(Cfg.Player.wallet or 0) or 0)
+        local total = Cfg.Player.slots + wallet
+        local created = Inv.Create(id, 'player', label, total, Cfg.Player.maxWeight, Inv.Deserialize(raw, total, id))
+        created.wallet = wallet
+        -- Cash and cards found in the main slots move to the wallet (first load after the update).
+        if raw ~= nil and Inv.TidyWallet(created) then created.dirty = true end
 
         if raw == nil then
             for _, it in ipairs(Cfg.StartingItems) do
@@ -460,7 +464,7 @@ CreateThread(function()
 
     local count = 0
     for _ in pairs(Items) do count = count + 1 end
-    TFC.RegisterModule({ name = 'inventory', version = '0.3.1' }, function()
+    TFC.RegisterModule({ name = 'inventory', version = '0.4.0' }, function()
         TFC.Log.Info('inventory ready: %d items', count)
     end)
 

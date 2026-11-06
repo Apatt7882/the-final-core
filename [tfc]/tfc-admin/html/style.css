@@ -195,3 +195,23 @@ button.small { height: 32px; padding: 0 12px; font-size: 13px; font-weight: 500;
 .toggle input:checked + .switch::after { transform: translateX(18px); background: var(--accent-ink); }
 .toggle strong { display: block; font-weight: 600; }
 .toggle .hint { display: block; font-size: 12px; color: var(--muted); }
+
+.job-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.job-row #job-select { grid-column: 1 / -1; }
+.job-row select { min-width: 0; }
+
+.aop-row { display: flex; gap: 8px; }
+.aop-row input { flex: 1; min-width: 0; }
+.prio-grid { display: grid; gap: 10px; }
+.prio-line { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 12px; }
+.prio-line .zone { font-weight: 600; }
+.prio-line .zone small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.prio-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.prio-btns button { height: 36px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.prio-btns button:hover { background: var(--surface-3); }
+.prio-btns button.on.available { border-color: #4cc38a; background: rgba(76, 195, 138, 0.14); }
+.prio-btns button.on.active { border-color: #e5484d; background: rgba(229, 72, 77, 0.16); }
+.prio-btns button.on.cooldown { border-color: var(--accent); background: var(--accent-soft); }
+.prio-btns button.on.hold { border-color: #5b9cf5; background: rgba(91, 156, 245, 0.14); }
+.cool-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.cool-row input { width: 80px; }

@@ -85,6 +85,7 @@ local function playerList()
                 if job then
                     entry.job = job.gradeLabel and ('%s · %s'):format(job.label, job.gradeLabel) or job.label
                     entry.onDuty = job.onDuty
+                    entry.jobName, entry.jobGrade = job.name, job.grade
                 end
             end
             if hasAccounts then
@@ -118,8 +119,28 @@ local function itemList()
     return list
 end
 
+---Every job and its ranks, for the "Set job" picker.
+local function jobList()
+    if GetResourceState('tfc-jobs') ~= 'started' then return {} end
+    local list = {}
+    for name, job in pairs(exports['tfc-jobs']:GetJobs() or {}) do
+        local grades = {}
+        for g, def in pairs(job.grades or {}) do
+            local n = math.tointeger(tonumber(g))
+            if n then grades[#grades + 1] = { grade = n, label = def.label or ('Rank ' .. n), pay = def.pay or 0 } end
+        end
+        table.sort(grades, function(a, b) return a.grade < b.grade end)
+        list[#list + 1] = { name = name, label = job.label or name, grades = grades }
+    end
+    table.sort(list, function(a, b)
+        if a.name == 'unemployed' then return true elseif b.name == 'unemployed' then return false end
+        return a.label < b.label
+    end)
+    return list
+end
+
 local function menuData(src)
-    return { ok = true, me = src, players = playerList(), items = itemList(), maxGive = Cfg.MaxGive }
+    return { ok = true, me = src, players = playerList(), items = itemList(), jobs = jobList(), maxGive = Cfg.MaxGive }
 end
 
 -- Actions ------------------------------------------------------------------------------------
@@ -204,6 +225,20 @@ function Actions.give(admin, target, d)
     log(admin, 'gave %dx %s to %s', count, d.item, label(target))
     if target ~= admin then notify(target, ('An admin gave you %dx %s.'):format(count, def.label)) end
     return { ok = true, message = ('Gave %dx %s to %s'):format(count, def.label, target == admin and 'you' or label(target)) }
+end
+
+function Actions.setjob(admin, target, d)
+    if GetResourceState('tfc-jobs') ~= 'started' then return fail('tfc-jobs is not running') end
+    if not TFC.GetPlayer(target) then return fail('they have no character loaded') end
+    local job, grade = type(d.job) == 'string' and d.job or '', math.tointeger(tonumber(d.grade))
+    if not grade then return fail('pick a rank') end
+    local ok, err = exports['tfc-jobs']:SetJob(target, job, grade)
+    if not ok then return fail(err or 'could not set that job') end
+    local now = exports['tfc-jobs']:GetJob(target)
+    local text = now and (now.gradeLabel and ('%s · %s'):format(now.label, now.gradeLabel) or now.label) or job
+    log(admin, 'set %s job to %s (%s %d)', label(target), text, job, grade)
+    if target ~= admin then notify(target, ('An admin made you %s.'):format(text), 'inform') end
+    return { ok = true, message = ('%s is now %s'):format(target == admin and 'You' or label(target), text) }
 end
 
 TFC.Callback.Register('admin:data', function(src)
@@ -335,7 +370,7 @@ TFC.On('playerUnloaded', function(src)
 end)
 
 CreateThread(function()
-    TFC.RegisterModule({ name = 'admin', version = '0.1.0' }, function()
+    TFC.RegisterModule({ name = 'admin', version = '0.2.0' }, function()
         TFC.Log.Info('admin tools ready')
     end)
 end)

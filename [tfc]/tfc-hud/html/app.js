@@ -116,6 +116,52 @@ function setCounts(list) {
     box.classList.remove('hidden');
 }
 
+// AOP and priority: { aop, city = { status, label, detail }, county = { ... } }
+function setAop(v) {
+    const box = $('aop');
+    if (!v || !v.aop) { box.classList.add('hidden'); return; }
+    const clean = (x) => String(x ?? '').replace(/[<>&"]/g, '');
+    const prio = (key, name) => {
+        const p = v[key];
+        if (!p) return '';
+        return `<span class="prio ${clean(p.status)}"><span class="dot"></span><span class="pl">${name}</span><b>${clean(p.label)}</b>${p.detail ? `<span class="pd">${clean(p.detail)}</span>` : ''}</span>`;
+    };
+    box.innerHTML = `<div class="aop-row"><span class="tag">AOP</span><span class="aop-name">${clean(v.aop)}</span></div>
+        <div class="prio-row">${prio('city', 'City')}${prio('county', 'County')}</div>`;
+    box.classList.remove('hidden');
+}
+
+// Notifications ---------------------------------------------------------------------------
+
+const TOAST_ICONS = {
+    success: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    error: '<path d="M12 7v6M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>',
+    warning: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 16.8v.2"/>',
+    inform: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8v.2"/>',
+};
+
+function notify(d) {
+    const box = $('toasts');
+    const type = TOAST_ICONS[d.type] ? d.type : 'inform';
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    const icon = `<span class="t-icon"><svg viewBox="0 0 24 24">${TOAST_ICONS[type]}</svg></span>`;
+    const body = document.createElement('div');
+    body.className = 't-body';
+    if (d.title) { const t = document.createElement('div'); t.className = 't-title'; t.textContent = d.title; body.appendChild(t); }
+    if (d.description) { const t = document.createElement('div'); t.className = 't-text'; t.textContent = d.description; body.appendChild(t); }
+    el.innerHTML = icon;
+    el.appendChild(body);
+    box.appendChild(el);
+    // At most 5 on screen: the oldest goes first.
+    while (box.children.length > 5) box.firstElementChild.remove();
+    const ms = Math.min(20000, Math.max(2000, Number(d.duration) || 4500));
+    setTimeout(() => {
+        el.classList.add('out');
+        setTimeout(() => el.remove(), 300);
+    }, ms);
+}
+
 function setAnchor(a) {
     // a.* are 0-1 fractions of the screen; place the location just right of the minimap,
     // vertically centred on its lower half.
@@ -135,6 +181,7 @@ const setters = {
     location: setLocation,
     anchor: setAnchor,
     counts: setCounts,
+    aop: setAop,
     postal: (code) => {
         $('postal-box').classList.toggle('hidden', !config.showPostal || !code);
         if (code) $('postal').textContent = code;
@@ -175,6 +222,9 @@ window.addEventListener('message', (event) => {
         case 'visible':
             setVisible(msg.value);
             break;
+        case 'notify':
+            notify(msg.data || {});
+            break;
     }
 });
 
@@ -196,6 +246,13 @@ if (!IN_GAME) {
         { key: 'leo', label: 'LEO', icon: 'leo', count: 4 },
         { key: 'ems', label: 'EMS', icon: 'ems', count: 0 },
     ] });
+    post({ action: 'set', field: 'aop', value: {
+        aop: 'Los Santos',
+        city: { status: 'active', label: 'In progress', detail: 'Dev Tester' },
+        county: { status: 'cooldown', label: 'Cooldown', detail: '12 min' },
+    } });
     post({ action: 'visible', value: true });
+    post({ action: 'notify', data: { title: 'Jobs', description: 'Paycheck: $150 deposited to your bank', type: 'success' } });
+    post({ action: 'notify', data: { title: 'Store clerk', description: 'Head back to 24/7 Store or you\'ll be clocked out in 30 s.', type: 'warning' } });
     setTimeout(() => post({ action: 'money', account: 'cash', value: 1500, delta: 250 }), 400);
 }

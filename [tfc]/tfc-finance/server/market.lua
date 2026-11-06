@@ -261,7 +261,9 @@ function FinSrv.start()
     load()
     FinSrv.ready = true
     TFC.RegisterModule({ name = 'finance', version = '0.1.0' }, function()
-        TFC.Log.Info('finance ready: %d stocks, AI accountant %s', #order, FinSrv.aiEnabled() and 'on' or 'off (no tfc_ai_key)')
+        local c = Cfg.Accountant.coords
+        TFC.Log.Info('finance ready: %d stocks, AI accountant %s, Accountant at %.2f, %.2f, %.2f', #order,
+            FinSrv.aiEnabled() and 'on' or 'off (no tfc_ai_key)', c.x, c.y, c.z)
     end)
     while true do
         Wait(M.tickSeconds * 1000)

@@ -94,6 +94,31 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
 
+## Check that AOP, priority, the wallet, notifications and admin jobs work
+
+**Notifications** from every TFC resource now show at the **top centre** (drawn by `tfc-hud`, even with the HUD
+hidden). Without tfc-hud they fall back to ox_lib (top) or GTA's feed.
+
+**AOP and priority** (`tfc-world`, shown on the HUD above Staff/LEO/EMS):
+
+| Do | Expect |
+| --- | --- |
+| F10 > World > Area of play: type or pick a preset | Everyone's HUD shows the new AOP and gets a notice. Default "Los Santos"; survives restarts |
+| F10 > World > Priority: Available / In progress / Cooldown / On hold for City or County | HUD updates for everyone; Cooldown uses the minutes box |
+| Anyone: `/cityprio start` (or `/countyprio start`) | Only when that priority is Available |
+| Staff or on-duty police: `/cityprio stop` | Cooldown for 20 min (counts down on the HUD, then Available on its own) |
+| `/cityprio cooldown 10`, `/cityprio hold`, `/cityprio reset` | Cooldown 10 min, On hold, Available |
+
+Who may use the commands, the cooldown length and the AOP presets are in `tfc-world/config.lua`. The AOP itself is
+admin-menu only.
+
+**Wallet** (`tfc-inventory`): 6 slots on the left of the inventory for cash and cards only (cash, ID card, driver's
+license, weapon permit, other licenses). New cash and cards go there first; other items can't be put in it. Cards
+already in someone's main inventory move to the wallet the next time they log in. Searched players' wallets show
+under their inventory and can be taken from. Size: `Player.wallet` in `tfc-inventory/config.lua`.
+
+**Admin: set a job:** F10 > Players > pick a player > Job: choose the job and rank, then **Set**.
+
 ## Check that the paycheck, world clock and store clerk fixes work
 
 **Paychecks:** everyone with a loaded character is paid their rank's pay every 15 minutes on the clock
