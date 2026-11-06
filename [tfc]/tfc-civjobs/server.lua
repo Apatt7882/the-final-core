@@ -1,134 +1,265 @@
--- Civilian jobs server. Clerk: where each on-duty clerk works, the clock-in rule, auto clock-out.
+-- Civilian jobs server: the shared parts. Each job (server/*.lua) registers itself in Civ.Jobs.
+--
+-- A player has at most one task at a time (Civ.tasks[src]). The client shows it and asks to do
+-- things with it ('civjobs:act'); the job checks the player is really where they should be (and has
+-- taken long enough) before paying anything. Bonuses go to the bank with tfc-accounts.
 --
 -- Exports (server):
---   CanGoOnDuty(src, job) -> ok, err      called by tfc-jobs before anyone in a `dutyCheck` job clocks in
---   GetWorkplace(src) -> { type = 'store', id, label, x, y, z } | nil
--- Player state: 'tfc:workplace' = the same table (or nil) while on duty.
+--   CanGoOnDuty(src, job) -> ok, err      tfc-jobs asks before anyone in a `dutyCheck` job clocks in
+--   GetWorkplace(src) -> { type = 'store', id, label, x, y, z } | nil   (clerks)
+--   GetTask(src) -> the player's current task view | nil
 
-local C = CivJobsConfig.Clerk
+Civ = { Jobs = {}, tasks = {}, vehicles = {} }
 
-local workplace = {}   -- src -> store view
-local pending = {}     -- src -> store chosen by CanGoOnDuty, used when duty actually changes
-local awaySince = {}   -- src -> os.time() they left the store
+local nextId = 0
 
-local function jobs() return exports['tfc-jobs'] end
+-- Helpers ------------------------------------------------------------------------------------------
 
-local function isOwned(shopId)
-    if GetResourceState('tfc-business') ~= 'started' then return false end
-    local ok, b = pcall(function() return exports['tfc-business']:GetBusinessByShop(shopId) end)
-    return ok and type(b) == 'table' and b.ownerCid ~= nil
+function Civ.jobs() return exports['tfc-jobs'] end
+
+---The player's job if they're on duty in it (or nil).
+function Civ.working(src, jobName)
+    if GetResourceState('tfc-jobs') ~= 'started' then return nil end
+    local job = Civ.jobs():GetJob(src)
+    if not job or job.onDuty ~= true then return nil end
+    if jobName and job.name ~= jobName then return nil end
+    return job
 end
 
----Stores a clerk can work at right now (not privately owned).
-local function stores()
-    local list = {}
-    local ok, shops = pcall(function() return exports['tfc-shops']:GetShops() end)
-    for _, s in ipairs(ok and shops or {}) do
-        if C.ShopTypes[s.type] and not isOwned(s.id) then
-            list[#list + 1] = { type = 'store', id = s.id, label = s.label, x = s.x, y = s.y, z = s.z }
-        end
-    end
-    return list
-end
-
-local function distTo(src, s)
+function Civ.pos(src)
     local ped = GetPlayerPed(src)
-    if not ped or ped == 0 then return math.huge end
-    local p = GetEntityCoords(ped)
-    return #(vector3(p.x, p.y, p.z) - vector3(s.x, s.y, s.z))
+    if not ped or ped == 0 then return nil end
+    return GetEntityCoords(ped)
 end
 
-local function nearestStore(src)
-    local best, bestD = nil, math.huge
-    for _, s in ipairs(stores()) do
-        local d = distTo(src, s)
-        if d < bestD then best, bestD = s, d end
+function Civ.dist2d(a, b)
+    local dx, dy = a.x - b.x, a.y - b.y
+    return math.sqrt(dx * dx + dy * dy)
+end
+
+---Is the player within `r` metres (2D) of `c`?
+function Civ.near(src, c, r)
+    local p = Civ.pos(src)
+    return p ~= nil and Civ.dist2d(p, c) <= r
+end
+
+function Civ.notify(src, text, kind, title)
+    TFC.UI.Notify(src, { title = title or 'Work', description = text, type = kind or 'inform' })
+end
+
+function Civ.fail(err) return { ok = false, error = err } end
+
+function Civ.rand(range) return math.random(range[1], range[2]) end
+
+---Pay a task bonus into the bank.
+function Civ.pay(src, amount, reason, title)
+    amount = math.floor(amount + 0.5)
+    if amount <= 0 then return false end
+    if GetResourceState('tfc-accounts') ~= 'started' then return false end
+    local ok = exports['tfc-accounts']:AddMoney(src, 'bank', amount, reason)
+    if ok then Civ.notify(src, ('+$%d · %s'):format(amount, reason), 'success', title) end
+    return ok
+end
+
+---A point `forward`/`right` metres from (x, y) facing `heading` (GTA headings: 0 = north, counter-clockwise).
+function Civ.offset(x, y, z, heading, forward, right)
+    local h = math.rad(heading)
+    local fx, fy = -math.sin(h), math.cos(h)
+    local rx, ry = math.cos(h), math.sin(h)
+    return { x = x + fx * forward + rx * right, y = y + fy * forward + ry * right, z = z }
+end
+
+-- Tasks ------------------------------------------------------------------------------------------------
+
+---What the client gets: everything except fields starting with "_".
+local function view(task)
+    local out = {}
+    for k, v in pairs(task) do
+        if type(k) ~= 'string' or k:sub(1, 1) ~= '_' then out[k] = v end
     end
-    return best, bestD
+    return out
 end
 
-local function notify(src, text, kind)
-    TFC.UI.Notify(src, { title = 'Store clerk', description = text, type = kind or 'inform' })
+function Civ.issue(src, task)
+    nextId = nextId + 1
+    task.id = nextId
+    task.issued = os.time()
+    Civ.tasks[src] = task
+    TriggerClientEvent('tfc-civjobs:client:task', src, view(task))
+    return task
 end
 
-local function setWorkplace(src, s)
-    workplace[src], awaySince[src] = s, nil
-    Player(src).state:set('tfc:workplace', s, true)
+---Send the task again after changing it.
+function Civ.update(src, task)
+    if Civ.tasks[src] ~= task then return end
+    TriggerClientEvent('tfc-civjobs:client:task', src, view(task))
 end
 
-exports('CanGoOnDuty', function(src, job)
-    if job ~= C.Job then return true end
-    local s, d = nearestStore(src)
-    if not s or d > C.ClockInDistance then
-        return false, 'clock in at the counter of a 24/7 store that isn\'t privately owned'
+function Civ.clear(src, text, kind)
+    if not Civ.tasks[src] then return end
+    Civ.tasks[src] = nil
+    TriggerClientEvent('tfc-civjobs:client:task', src, false)
+    if text then Civ.notify(src, text, kind) end
+end
+
+exports('GetTask', function(src) local t = Civ.tasks[src] return t and view(t) or nil end)
+
+TFC.Callback.Register('civjobs:act', function(src, taskId, action, data)
+    local task = Civ.tasks[src]
+    if not task or task.id ~= taskId then return Civ.fail('that job is over') end
+    local job = Civ.Jobs[task.job]
+    local fn = job and job.actions and job.actions[action]
+    if type(fn) ~= 'function' then return Civ.fail('unknown action') end
+    if not Civ.working(src, job.name) then return Civ.fail('you are not on duty') end
+    local r = fn(src, task, type(data) == 'table' and data or {})
+    return r or { ok = true }
+end, { rateLimit = 400 })
+
+-- Requests not tied to a task: start a route, find a fare...
+TFC.Callback.Register('civjobs:request', function(src, jobName, what, data)
+    local job = Civ.Jobs[jobName]
+    local fn = job and job.requests and job.requests[what]
+    if type(fn) ~= 'function' then return Civ.fail('unknown request') end
+    if not Civ.working(src, job.name) then return Civ.fail('clock in first') end
+    return fn(src, type(data) == 'table' and data or {}) or { ok = true }
+end, { rateLimit = 800 })
+
+-- Give up the current task (route, call, fare). Customers and restocks can't be skipped.
+TFC.Callback.Register('civjobs:cancel', function(src)
+    local task = Civ.tasks[src]
+    if not task then return Civ.fail('you have nothing to cancel') end
+    if task.job == CivJobsConfig.Clerk.Job then return Civ.fail('the store needs you; finish it') end
+    Civ.clear(src, 'Task cancelled. No bonus for this one.')
+    local job = Civ.Jobs[task.job]
+    if job and job.cancelled then job.cancelled(src) end
+    return { ok = true }
+end, { rateLimit = 1000 })
+
+-- Clock in / out at a depot (the depot menu).
+TFC.Callback.Register('civjobs:duty', function(src, jobName, on)
+    local job = Civ.Jobs[jobName]
+    if not job then return Civ.fail('unknown job') end
+    local mine = Civ.jobs():GetJob(src)
+    if not mine or mine.name ~= jobName then return Civ.fail(('you don\'t work for %s'):format(job.label or jobName)) end
+    local ok, err = Civ.jobs():SetDuty(src, on == true)
+    if not ok then return Civ.fail(err) end
+    return { ok = true, onDuty = on == true }
+end, { rateLimit = 800 })
+
+-- Work vehicles --------------------------------------------------------------------------------------
+-- The client spawns the vehicle (on the nearest road) after the server says yes, then registers it.
+
+function Civ.vehicleOf(src)
+    local v = Civ.vehicles[src]
+    if not v then return nil end
+    local ent = NetworkGetEntityFromNetworkId(v.netId)
+    if ent == 0 or not DoesEntityExist(ent) then
+        Civ.vehicles[src] = nil
+        return nil
     end
-    pending[src] = s
+    return ent, v
+end
+
+---Is the player's work vehicle within `r` metres of them?
+function Civ.vehicleNear(src, r)
+    local ent = Civ.vehicleOf(src)
+    local p = Civ.pos(src)
+    if not ent or not p then return false end
+    return Civ.dist2d(GetEntityCoords(ent), p) <= r
+end
+
+function Civ.deleteVehicle(src)
+    local ent = Civ.vehicleOf(src)
+    if ent then DeleteEntity(ent) end
+    Civ.vehicles[src] = nil
+end
+
+TFC.Callback.Register('civjobs:vehicle', function(src, jobName, action, netId)
+    local job = Civ.Jobs[jobName]
+    if not job or not job.vehicle then return Civ.fail('this job has no vehicle') end
+    if not Civ.working(src, job.name) then return Civ.fail('clock in first') end
+    local spot = job.vehicle.depot
+
+    if action == 'request' then
+        if not Civ.near(src, spot, 40.0) then return Civ.fail('get the vehicle at the depot') end
+        Civ.deleteVehicle(src)
+        Civ.vehicles[src] = { pending = true, job = jobName }
+        return { ok = true, model = job.vehicle.model, spot = job.vehicle.spot, plate = job.vehicle.plate }
+
+    elseif action == 'spawned' then
+        local v = Civ.vehicles[src]
+        if not v or not v.pending then return Civ.fail('no vehicle was requested') end
+        local ent = NetworkGetEntityFromNetworkId(math.tointeger(tonumber(netId)) or 0)
+        if ent == 0 or not DoesEntityExist(ent) or GetEntityModel(ent) ~= joaat(job.vehicle.model) then
+            Civ.vehicles[src] = nil
+            return Civ.fail('that is not the work vehicle')
+        end
+        Civ.vehicles[src] = { netId = netId, job = jobName }
+        return { ok = true }
+
+    elseif action == 'return' then
+        local ent = Civ.vehicleOf(src)
+        if not ent then return Civ.fail('you have no work vehicle out') end
+        if not Civ.near(src, spot, 40.0) or Civ.dist2d(GetEntityCoords(ent), spot) > 50.0 then
+            return Civ.fail('bring the vehicle back to the depot first')
+        end
+        Civ.deleteVehicle(src)
+        return { ok = true }
+    end
+    return Civ.fail('unknown action')
+end, { rateLimit = 800 })
+
+-- Duty and lifecycle --------------------------------------------------------------------------------------
+
+exports('CanGoOnDuty', function(src, jobName)
+    for _, job in pairs(Civ.Jobs) do
+        if job.name == jobName and job.canGoOnDuty then return job.canGoOnDuty(src) end
+    end
     return true
 end)
 
-exports('GetWorkplace', function(src) return workplace[src] end)
+local function stopWork(src)
+    Civ.clear(src)
+    Civ.deleteVehicle(src)
+    for _, job in pairs(Civ.Jobs) do
+        if job.stop then job.stop(src) end
+    end
+end
 
 TFC.On('dutyChanged', function(src, onDuty, job)
-    if onDuty and job and job.name == C.Job and pending[src] then
-        setWorkplace(src, pending[src])
-        notify(src, ('Clocked in at %s. Stay near the store to keep your shift.'):format(pending[src].label), 'success')
-    elseif not onDuty and workplace[src] then
-        setWorkplace(src, nil)
+    for _, j in pairs(Civ.Jobs) do
+        if j.dutyChanged then j.dutyChanged(src, onDuty, job) end
     end
-    pending[src] = nil
+    if not onDuty then stopWork(src) end
 end)
 
 TFC.On('jobChanged', function(src)
-    if workplace[src] then setWorkplace(src, nil) end
+    stopWork(src)
 end)
 
 TFC.On('playerUnloaded', function(src)
-    workplace[src], pending[src], awaySince[src] = nil, nil, nil
+    stopWork(src)
 end)
 
--- F6 > Clock in / out
-TFC.Callback.Register('civjobs:clock', function(src)
-    local job = jobs():GetJob(src)
-    if not job or job.name ~= C.Job then return { ok = false, error = 'you are not a store clerk' } end
-    local ok, err = jobs():SetDuty(src, not job.onDuty)
-    if not ok then return { ok = false, error = err } end
-    return { ok = true, onDuty = not job.onDuty }
-end, { rateLimit = 1000 })
+AddEventHandler('playerDropped', function()
+    local src = tonumber(source)
+    if src then stopWork(src) end
+end)
 
--- Where clerks can work (for the client's "clock in here" hint).
-TFC.Callback.Register('civjobs:stores', function()
-    return stores()
-end, { rateLimit = 2000 })
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    for src in pairs(Civ.vehicles) do Civ.deleteVehicle(src) end
+end)
 
--- Clock out clerks who walked off, or whose store got bought.
-CreateThread(function()
-    while true do
-        Wait(5000)
-        local now = os.time()
-        for src, s in pairs(workplace) do
-            local gone = GetPlayerPed(src) == 0
-            if not gone then
-                if isOwned(s.id) then
-                    jobs():SetDuty(src, false)
-                    notify(src, ('%s is now privately owned. You were clocked out.'):format(s.label), 'error')
-                elseif distTo(src, s) > C.LeaveDistance then
-                    awaySince[src] = awaySince[src] or now
-                    if now - awaySince[src] >= C.LeaveGraceSeconds then
-                        jobs():SetDuty(src, false)
-                        notify(src, ('You left %s and were clocked out.'):format(s.label), 'error')
-                    elseif now - awaySince[src] < 5 then
-                        notify(src, ('Head back to %s or you\'ll be clocked out in %d s.'):format(s.label, C.LeaveGraceSeconds), 'warning')
-                    end
-                else
-                    awaySince[src] = nil
-                end
-            end
-        end
+-- Tells each job module to start its loops once everything is loaded (see server/start.lua).
+function Civ.start()
+    for _, job in pairs(Civ.Jobs) do
+        if job.start then CreateThread(job.start) end
     end
-end)
-
-CreateThread(function()
-    TFC.RegisterModule({ name = 'civjobs', version = '0.1.0' }, function()
-        TFC.Log.Info('civjobs ready: clerks can work at %d store(s)', #stores())
+    local names = {}
+    for key in pairs(Civ.Jobs) do names[#names + 1] = key end
+    table.sort(names)
+    TFC.RegisterModule({ name = 'civjobs', version = '0.2.0' }, function()
+        TFC.Log.Info('civjobs ready: %s', table.concat(names, ', '))
     end)
-end)
+end

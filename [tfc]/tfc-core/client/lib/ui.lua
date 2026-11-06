@@ -127,3 +127,15 @@ function TFC.UI.Progress(data)
     if data.anim then StopAnimTask(ped, data.anim.dict, data.anim.clip, 1.0) end
     return true
 end
+
+---Quick skill check (ox_lib). Returns true when passed. Without ox_lib it's a short progress bar
+---that always passes, so nobody gets stuck.
+---@param difficulty string|string[]|nil e.g. { 'easy', 'easy', 'medium' }
+---@param keys string[]|nil e.g. { 'e' }
+function TFC.UI.SkillCheck(difficulty, keys)
+    if GetResourceState('ox_lib') == 'started' then
+        local ok, passed = pcall(function() return exports.ox_lib:skillCheck(difficulty or { 'easy', 'medium' }, keys) end)
+        if ok then return passed == true end
+    end
+    return TFC.UI.Progress({ duration = 2000, label = 'Working...' })
+end

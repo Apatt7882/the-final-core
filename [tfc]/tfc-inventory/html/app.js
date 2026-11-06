@@ -56,18 +56,20 @@ function def(name) {
     return state.items[name] || { label: name, weight: 0 };
 }
 
-const META_LABELS = { serial: 'Serial', durability: 'Condition', ammo: 'Loaded', name: 'Name', dob: 'Born', cid: 'Citizen ID', number: 'Number', license: 'License', classes: 'Classes', issued: 'Issued' };
+const MOD_LABELS = { flashlight: 'Flashlight', suppressor: 'Suppressor', grip: 'Grip', scope: 'Scope', extclip: 'Extended Mag' };
+const META_LABELS = { mods: 'Mods', serial: 'Serial', durability: 'Condition', ammo: 'Loaded', name: 'Name', dob: 'Born', cid: 'Citizen ID', number: 'Number', license: 'License', classes: 'Classes', issued: 'Issued' };
 
 function metaRows(item, d) {
     const m = item.metadata || {};
-    const order = ['durability', 'ammo', 'serial'];
+    const order = ['durability', 'ammo', 'mods', 'serial'];
     const keys = [...order.filter((k) => k in m), ...Object.keys(m).filter((k) => !order.includes(k))];
     return keys
         .filter((k) => !k.startsWith('_') && k !== 'weight')
         .map((k) => {
             let v = m[k];
             if (k === 'durability') v = `${Math.round(v)}%${v <= 0 ? ' (jammed)' : ''}`;
-            else if (k === 'ammo' && d.clip) v = `${v} / ${d.clip}`;
+            else if (k === 'ammo' && d.clip) v = `${v} / ${Array.isArray(m.mods) && m.mods.includes('extclip') && d.extClip ? d.extClip : d.clip}`;
+            else if (k === 'mods' && Array.isArray(v)) v = v.map((x) => MOD_LABELS[x] || x).join(', ');
             else if (typeof v === 'object') v = JSON.stringify(v);
             return `<dt>${esc(META_LABELS[k] || k)}</dt><dd>${esc(v)}</dd>`;
         }).join('');

@@ -2,6 +2,7 @@
 --   serial      e.g. TFC-7K2M9QXA (guns only)
 --   ammo        rounds loaded in the gun
 --   durability  100 = new, 0 = jammed (guns only)
+--   mods        fitted weapon mods, e.g. { 'suppressor', 'flashlight' } (see WeaponMods in items.lua)
 -- The client reports shots; the server takes the rounds and wear off the item. Reloading
 -- takes ammo items from the inventory. Only one weapon can be held at a time.
 
@@ -29,6 +30,40 @@ function InvSrv.weaponMeta(name, metadata)
     if (def.wear or 0) > 0 and meta.durability == nil then meta.durability = 100 end
     return next(meta) and meta or nil
 end
+
+-- Mods ----------------------------------------------------------------------------------------------
+
+local modByItem = {}
+for key, t in pairs(WeaponMods.Types) do modByItem[t.item] = key end
+
+local function modsOf(item)
+    local list = item.metadata and item.metadata.mods
+    return type(list) == 'table' and list or {}
+end
+
+local function hasMod(item, key)
+    for _, k in ipairs(modsOf(item)) do if k == key then return true end end
+    return false
+end
+
+---GTA component names for the mods on this gun.
+local function componentsOf(item)
+    local fits = WeaponMods.Weapons[item.name] or {}
+    local out = {}
+    for _, key in ipairs(modsOf(item)) do
+        if fits[key] then out[#out + 1] = fits[key] end
+    end
+    return out
+end
+
+---Rounds per magazine, counting an extended magazine.
+local function clipOf(item)
+    local def = Items[item.name]
+    if hasMod(item, 'extclip') and WeaponMods.Clips[item.name] then return WeaponMods.Clips[item.name] end
+    return def.clip
+end
+
+InvSrv.weaponClip = clipOf
 
 local function round1(n)
     return math.floor(n * 10 + 0.5) / 10
@@ -75,7 +110,7 @@ local function reload(src)
     if not def.ammo then return false, ('%s does not use ammo'):format(def.label) end
 
     local loaded = item.metadata and item.metadata.ammo or 0
-    local need = (def.clip or 0) - loaded
+    local need = (clipOf(item) or 0) - loaded
     if need <= 0 then return false, 'already fully loaded' end
 
     local have = Inv.Count(inv, def.ammo)
@@ -98,7 +133,7 @@ end
 function InvSrv.handlesUse(name)
     local def = Items[name]
     if not def then return false end
-    if def.weapon or name == 'weapon_kit' then return true end
+    if def.weapon or name == 'weapon_kit' or modByItem[name] then return true end
     for _, w in pairs(Items) do
         if w.weapon and w.ammo == name then return true end
     end
@@ -132,7 +167,8 @@ function InvSrv.useWeaponItem(src, slot, item)
                 ammo = meta.ammo,
                 durability = meta.durability,
                 ammoItem = def.ammo,
-                clip = def.clip,
+                clip = clipOf(item),
+                components = componentsOf(item),
                 infinite = def.infinite == true,
             },
         }
@@ -151,6 +187,29 @@ function InvSrv.useWeaponItem(src, slot, item)
         inv, wSlot, wItem = heldItem(src)
         if inv then setMeta(inv, wSlot, wItem, { durability = 100 }) end
         return { ok = true, close = true, weaponUpdate = { durability = 100 } }
+    end
+
+    -- Weapon mod: fit it to the held gun.
+    local modKey = modByItem[item.name]
+    if modKey then
+        local inv, wSlot, wItem = heldItem(src)
+        if not inv then return { ok = false, error = 'hold the gun you want to fit it to' } end
+        local fits = WeaponMods.Weapons[wItem.name]
+        if not fits or not fits[modKey] then
+            return { ok = false, error = ('a %s doesn\'t fit the %s'):format(def.label:lower(), Items[wItem.name].label) }
+        end
+        if hasMod(wItem, modKey) then return { ok = false, error = ('the %s already has one'):format(Items[wItem.name].label) } end
+
+        local removed, err = InvSrv.RemoveItem(src, item.name, 1, nil, nil, 'fitted to ' .. Items[wItem.name].label)
+        if not removed then return { ok = false, error = err } end
+        inv, wSlot, wItem = heldItem(src)
+        if not inv then return { ok = false, error = 'you are not holding a gun' } end
+        local list = Inv.Copy(modsOf(wItem))
+        list[#list + 1] = modKey
+        setMeta(inv, wSlot, wItem, { mods = list })
+        inv, wSlot, wItem = heldItem(src)
+        TFC.UI.Notify(src, { title = 'Weapons', description = ('%s fitted to your %s.'):format(def.label, Items[wItem.name].label), type = 'success' })
+        return { ok = true, close = true, weaponUpdate = { components = componentsOf(wItem), clip = clipOf(wItem) } }
     end
 
     -- Ammo: reload the held gun if it takes this ammo.
@@ -194,6 +253,35 @@ TFC.Callback.Register('weapons:shots', function(src, shots)
     meta = setMeta(inv, slot, item, changes)
     return { ok = true, ammo = meta.ammo, durability = meta.durability }
 end, { rateLimit = 200 })
+
+-- /removemods: take every mod off the held gun and give the items back.
+TFC.RegisterCommand('removemods', { help = 'Take the mods off the gun in your hands' }, function(src)
+    if src == 0 then return end
+    local inv, slot, item = heldItem(src)
+    if not inv then return TFC.UI.Notify(src, { title = 'Weapons', description = 'Hold the gun first.', type = 'error' }) end
+    local list = modsOf(item)
+    if #list == 0 then return TFC.UI.Notify(src, { title = 'Weapons', description = 'That gun has no mods.', type = 'error' }) end
+
+    -- Make sure the items fit back in the inventory before touching the gun.
+    local def = Items[item.name]
+    local baseClip = def.clip or 0
+    local extra = hasMod(item, 'extclip') and math.max(0, ((item.metadata or {}).ammo or 0) - baseClip) or 0
+    for _, key in ipairs(list) do
+        local ok = Inv.CanFit(inv, WeaponMods.Types[key].item, 1)
+        if not ok then return TFC.UI.Notify(src, { title = 'Weapons', description = 'Make room in your inventory first.', type = 'error' }) end
+    end
+
+    local meta = Inv.Copy(item.metadata) or {}
+    meta.mods = nil
+    if extra > 0 then meta.ammo = baseClip end
+    Inv.SetMetadata(inv, slot, meta)
+    InvSrv.sync(inv)
+    for _, key in ipairs(list) do InvSrv.AddItem(src, WeaponMods.Types[key].item, 1, nil, nil, 'removed from ' .. def.label) end
+    if extra > 0 and def.ammo then InvSrv.AddItem(src, def.ammo, extra, nil, nil, 'unloaded extended magazine') end
+
+    TriggerClientEvent('tfc-inventory:client:weaponUpdate', src, { components = {}, clip = baseClip, ammo = extra > 0 and baseClip or nil })
+    TFC.UI.Notify(src, { title = 'Weapons', description = ('Took %d mod(s) off your %s.'):format(#list, def.label), type = 'success' })
+end)
 
 TFC.Callback.Register('weapons:holster', function(src)
     equipped[src] = nil

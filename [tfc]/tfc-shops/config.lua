@@ -66,6 +66,12 @@ ShopsConfig.Types = {
             { name = 'ammo_9mm', price = 3 },
             { name = 'ammo_12g', price = 8 },
             { name = 'weapon_kit', price = 200 },
+            -- Weapon mods: hold the gun and use the mod to fit it (/removemods takes them off).
+            { name = 'mod_flashlight', price = 300 },
+            { name = 'mod_grip', price = 600 },
+            { name = 'mod_scope', price = 1200 },
+            { name = 'mod_extclip', price = 900, license = 'weapon' },
+            { name = 'mod_suppressor', price = 4000, license = 'weapon' },
         },
         buys = {
             { name = 'snspistol', price = 600 },
@@ -138,6 +144,8 @@ ShopsConfig.Types = {
             { name = 'ammo_9mm', price = 6, stock = 500 },
             { name = 'ammo_12g', price = 12, stock = 200 },
             { name = 'weapon_kit', price = 400, stock = 5 },
+            { name = 'mod_extclip', price = 1800, stock = 4 },
+            { name = 'mod_suppressor', price = 7500, stock = 2 },
         },
         restock = { minutes = 60, amount = 1 },
     },

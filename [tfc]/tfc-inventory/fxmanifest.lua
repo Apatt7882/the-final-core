@@ -5,7 +5,7 @@ lua54 'yes'
 name 'tfc-inventory'
 author 'Andrew'
 description 'The Final Core - slot and weight inventory'
-version '0.4.0'
+version '0.5.0'
 
 dependencies {
     'oxmysql',

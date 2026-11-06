@@ -42,6 +42,7 @@
 ---@field Menu fun(menu: { id: string, title: string, options: table[] }): boolean client only: context menu (ox_lib)
 ---@field Input fun(heading: string, rows: table[]): table|nil client only: input dialog (ox_lib)
 ---@field Progress fun(data: { duration: integer, label: string, anim?: table, canCancel?: boolean }): boolean client only
+---@field SkillCheck fun(difficulty?: string|string[], keys?: string[]): boolean client only: skill check (ox_lib)
 
 ---@class TFC
 ---@field UI TFCUI

@@ -67,7 +67,14 @@ function CityActions.apply(src, d)
     local ok, err = exports['tfc-jobs']:SetJob(src, d.job, 0)
     if not ok then return fail(err) end
     TFC.Log.Info('%s signed up as %s at the Government Center', TFC.GetPlayer(src):GetFullName(), job.label)
-    local hint = job.dutyCheck and ' Head to any 24/7 store and clock in (F6 or /duty) to start working.' or ''
+    local HINTS = {
+        clerk = ' Head to any 24/7 store and clock in at the counter (F6 or /duty).',
+        garbage = ' Clock in at the LS Sanitation depot (on your map) and take a truck.',
+        delivery = ' Clock in at the GoPostal depot (on your map) and take a van.',
+        mechanic = ' Go on duty (/duty) for breakdown calls; the flatbed is at Hayes Autos.',
+        taxi = ' Get a cab at Downtown Cab Co., go on duty (/duty) and use F6 > Find a fare.',
+    }
+    local hint = HINTS[d.job] or ''
     return { ok = true, message = ('Welcome to %s! Your paycheck changes from the next payday.%s'):format(job.label, hint) }
 end
 

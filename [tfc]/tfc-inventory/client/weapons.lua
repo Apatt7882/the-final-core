@@ -34,11 +34,12 @@ local function equip(w)
     held = {
         name = w.name, label = w.label, hash = hash, serial = w.serial,
         ammo = w.ammo, durability = w.durability, ammoItem = w.ammoItem,
-        clip = w.clip, infinite = w.infinite,
+        clip = w.clip, infinite = w.infinite, components = w.components or {},
     }
     jamNotified = false
 
     GiveWeaponToPed(ped, hash, 0, false, true)
+    for _, c in ipairs(held.components) do GiveWeaponComponentToPed(ped, hash, joaat(c)) end
     if w.infinite then
         SetPedAmmo(ped, hash, 4500)
     elseif w.ammoItem then
@@ -67,6 +68,18 @@ end
 
 function ClientWeapons.update(u)
     if not held then return end
+    if u.components then
+        -- Mods changed: take off what's gone, fit what's new.
+        local ped = PlayerPedId()
+        local want = {}
+        for _, c in ipairs(u.components) do want[c] = true end
+        for _, c in ipairs(held.components or {}) do
+            if not want[c] then RemoveWeaponComponentFromPed(ped, held.hash, joaat(c)) end
+        end
+        for c in pairs(want) do GiveWeaponComponentToPed(ped, held.hash, joaat(c)) end
+        held.components = u.components
+    end
+    if u.clip then held.clip = u.clip end
     if u.ammo ~= nil then
         held.ammo = u.ammo
         local ped = PlayerPedId()
@@ -211,4 +224,8 @@ AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() and held then
         RemoveWeaponFromPed(PlayerPedId(), held.hash)
     end
+end)
+
+TFC.OnNet('tfc-inventory:client:weaponUpdate', function(u)
+    ClientWeapons.update(u or {})
 end)

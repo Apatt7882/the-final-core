@@ -448,7 +448,7 @@ end)
 CreateThread(function()
     while not exports['tfc-core']:IsDatabaseReady() do Wait(250) end
     MySQL.query.await(SCHEMA)
-    TFC.RegisterModule({ name = 'police', version = '0.1.0' }, function()
+    TFC.RegisterModule({ name = 'police', version = '0.2.0' }, function()
         TFC.Log.Info('police ready')
     end)
 end)

@@ -94,6 +94,48 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
 
+## Check that update 9a works (civilian jobs)
+
+All of these are public jobs at the Government Center. Every finished task pays a bonus into the bank on top of
+the 15-minute paycheck. F6 > **Current task** (or `/task`) says what to do next; F6 > **Cancel task** gives up a
+route, call or fare. Everything is in `tfc-civjobs/config.lua`; places marked "(tune)" can be moved with `/coords`.
+
+| Job | How it works | Pays |
+| --- | --- | --- |
+| **Convenience Store Clerk** | Clock in at the counter of any 24/7 nobody owns (F6 or `/duty`); the store's NPC clerk steps aside. NPC customers walk up: **[E] Ring up** and pass the quick skill check. Now and then: carry 3 boxes from behind the counter to the marked shelves, or mop a spill. Leave the store for 30 s and you're clocked out | 10% of the sale + $5-25 tip (no tip if you fail the check); $40 a box; $35 a spill |
+| **LS Sanitation** (garbage) | Clock in at the depot (map), **Take a work vehicle**, **Start a route**. Drive to the area on your map; dumpsters there get marked. Grab a bag at each, throw it in the back of the truck. Two areas, then back to the depot: **Finish route** | $35 a bag, $150 route bonus |
+| **GoPostal** (delivery) | Clock in at the depot, take a van, start a route: 4 stores. Park, take a package from the back of the van, carry it to the counter | $60 a package, $150 route bonus |
+| **Mechanic** | Go on duty anywhere. Breakdown calls come in every few minutes (GPS): **[E] Repair** it on the spot. With the Hayes Autos flatbed out, some calls are tows: load it, bring it to the yard, **Drop off** | $120 a repair, $250 a tow |
+| **Taxi** | Get a cab at Downtown Cab Co. (or any taxi), go on duty, F6 > **Find a fare**. Stop next to the passenger, they get in and say where to go; stop at the marker | $20 + $70 per km, 0-15% tip |
+
+Cheats are checked on the server: you have to be at each spot, with your work vehicle where it should be, and
+can't finish a drive faster than about 160 km/h allows.
+
+## Check that weapon mods and ShotSpotter work
+
+**Weapon mods** (`tfc-inventory`, sold at Ammu-Nation): Flashlight $300, Grip $600, Scope $1,200, Extended Magazine
+$900 and Suppressor $4,000 (the last two need a Weapon Permit). The Arms Dealer sells magazines and suppressors with
+no permit, for more.
+
+| Do | Expect |
+| --- | --- |
+| Hold a gun, use a mod from the inventory | It's fitted (shows on the gun) and saved on it; the item is used up |
+| Mod that doesn't fit, or one it already has | Refused, item kept |
+| Extended Magazine | Bigger magazine (Pistol 12 to 16, SMG 30 to 60...) |
+| Hover the gun in the inventory | "Mods: Suppressor, Extended Mag" |
+| Holding the gun: `/removemods` | Every mod comes off and back into your inventory (extra rounds too) |
+
+Which mod fits which gun (and the GTA component used) is `WeaponMods` at the bottom of `tfc-inventory/items.lua`.
+
+**ShotSpotter** (`tfc-police`): when someone fires a gun (not suppressed, not a taser), on-duty police get an alert
+15 seconds later: a red circle near the shots (not the exact spot) for 90 seconds, a notice saying semi-automatic or
+fully automatic and the street, and a 25% chance of a camera description, e.g. "Male, wearing a mask and a hat or
+helmet, in a black Sultan". `/shotspotter` sets a waypoint to the latest alert. On-duty police shooting and the
+Ammu-Nation ranges don't trigger it. Settings: `PoliceConfig.ShotSpotter`.
+
+GTA doesn't tell scripts the colour of clothes, so the camera describes what it can: male or female, mask, hat or
+helmet, glasses, bag, shirtless, and the vehicle (model and colour) or "on foot".
+
 ## Check that AOP, priority, the wallet, notifications and admin jobs work
 
 **Notifications** from every TFC resource now show at the **top centre** (drawn by `tfc-hud`, even with the HUD

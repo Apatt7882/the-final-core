@@ -8,7 +8,7 @@ local NO_RESPONSE = { ok = false, error = 'no response from server, try again' }
 local function itemDefs()
     local defs = {}
     for name, def in pairs(Items) do
-        defs[name] = { label = def.label, weight = def.weight, description = def.description, usable = def.usable == true, stack = def.stack ~= false, weapon = def.weapon == true, clip = def.clip }
+        defs[name] = { label = def.label, weight = def.weight, description = def.description, usable = def.usable == true, stack = def.stack ~= false, weapon = def.weapon == true, clip = def.clip, extClip = WeaponMods.Clips[name] }
     end
     return defs
 end

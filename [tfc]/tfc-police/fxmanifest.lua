@@ -4,8 +4,8 @@ lua54 'yes'
 
 name 'tfc-police'
 author 'Andrew'
-description 'The Final Core - cuffs, escort, vehicles, search, fines and jail'
-version '0.1.0'
+description 'The Final Core - cuffs, escort, vehicles, search, fines, jail and ShotSpotter'
+version '0.2.0'
 
 dependencies {
     'oxmysql',
@@ -21,6 +21,10 @@ shared_scripts {
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server.lua',
+    'server/shotspotter.lua',
 }
 
-client_script 'client.lua'
+client_scripts {
+    'client.lua',
+    'client/shotspotter.lua',
+}

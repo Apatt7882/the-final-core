@@ -74,7 +74,7 @@ JobsConfig = {
         mechanic = {
             label = 'Mechanic',
             public = true, -- players can sign up at the Government Center (tfc-government)
-            description = 'Repair and tow vehicles. Bill customers for your work.',
+            description = 'Repair and tow vehicles. On duty you get NPC breakdown calls to repair or tow; bill players for your work.',
             payRange = { min = 100, max = 800 },
             grades = {
                 [0] = { label = 'Apprentice', pay = 200 },
@@ -97,10 +97,36 @@ JobsConfig = {
             },
         },
 
+        garbage = {
+            label = 'LS Sanitation',
+            public = true,
+            description = 'Drive a garbage truck route and empty dumpsters around the city. Clock in at the depot.',
+            dutyCheck = 'tfc-civjobs',
+            payRange = { min = 100, max = 500 },
+            grades = {
+                [0] = { label = 'Collector', pay = 150 },
+                [1] = { label = 'Driver', pay = 200 },
+                [2] = { label = 'Supervisor', pay = 250, boss = true },
+            },
+        },
+
+        delivery = {
+            label = 'GoPostal',
+            public = true,
+            description = 'Load the van at the depot and deliver packages to stores around the city. Clock in at the depot.',
+            dutyCheck = 'tfc-civjobs',
+            payRange = { min = 100, max = 500 },
+            grades = {
+                [0] = { label = 'Courier', pay = 150 },
+                [1] = { label = 'Senior Courier', pay = 200 },
+                [2] = { label = 'Route Manager', pay = 250, boss = true },
+            },
+        },
+
         taxi = {
             label = 'Downtown Cab Co.',
             public = true,
-            description = 'Drive people around the city. Bill your fares.',
+            description = 'Drive people around the city. On duty: F6 > Find a fare for NPC passengers; bill player fares.',
             payRange = { min = 100, max = 500 },
             grades = {
                 [0] = { label = 'Driver', pay = 150 },

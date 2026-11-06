@@ -81,8 +81,10 @@ CreateThread(function()
     while true do
         if TFC.PlayerData then
             local here = GetEntityCoords(PlayerPedId())
+            -- A player clerk on shift (tfc-civjobs) stands where the NPC would: no NPC there.
+            local staffed = GlobalState['tfc:staffedStores'] or {}
             for _, shop in ipairs(shops) do
-                local near = #(here - vector3(shop.x, shop.y, shop.z)) < Cfg.PedDistance
+                local near = #(here - vector3(shop.x, shop.y, shop.z)) < Cfg.PedDistance and not staffed[tostring(shop.id)]
                 local ped = peds[shop.id]
                 if near and not ped then
                     peds[shop.id] = spawnPed(shop) or false

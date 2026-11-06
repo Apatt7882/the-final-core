@@ -464,7 +464,7 @@ CreateThread(function()
 
     local count = 0
     for _ in pairs(Items) do count = count + 1 end
-    TFC.RegisterModule({ name = 'inventory', version = '0.4.0' }, function()
+    TFC.RegisterModule({ name = 'inventory', version = '0.5.0' }, function()
         TFC.Log.Info('inventory ready: %d items', count)
     end)
 

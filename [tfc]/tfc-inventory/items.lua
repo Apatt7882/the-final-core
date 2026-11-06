@@ -177,3 +177,63 @@ for name, w in pairs(Weapons) do
     w.description = w.description or (w.ammo and ('Uses %s.'):format(Items[w.ammo].label) or nil)
     Items[name] = w
 end
+
+-- Weapon mods ---------------------------------------------------------------------------------------
+-- Hold a gun and use a mod item to fit it (the item is used up and saved on the gun). /removemods
+-- takes every mod off the gun in your hands and gives the items back.
+--   Types[key]        the item that fits it
+--   Weapons[weapon]   { [key] = GTA component name } for each mod that gun can take
+--   Clips[weapon]     rounds per magazine with the extended magazine fitted
+-- A suppressor also keeps the gun off ShotSpotter (tfc-police).
+
+WeaponMods = {
+    Types = {
+        flashlight = { item = 'mod_flashlight', label = 'Flashlight' },
+        suppressor = { item = 'mod_suppressor', label = 'Suppressor' },
+        grip       = { item = 'mod_grip', label = 'Grip' },
+        scope      = { item = 'mod_scope', label = 'Scope' },
+        extclip    = { item = 'mod_extclip', label = 'Extended Magazine' },
+    },
+    Weapons = {
+        pistol        = { flashlight = 'COMPONENT_AT_PI_FLSH', suppressor = 'COMPONENT_AT_PI_SUPP_02', extclip = 'COMPONENT_PISTOL_CLIP_02' },
+        combatpistol  = { flashlight = 'COMPONENT_AT_PI_FLSH', suppressor = 'COMPONENT_AT_PI_SUPP', extclip = 'COMPONENT_COMBATPISTOL_CLIP_02' },
+        snspistol     = { extclip = 'COMPONENT_SNSPISTOL_CLIP_02' },
+        vintagepistol = { suppressor = 'COMPONENT_AT_PI_SUPP', extclip = 'COMPONENT_VINTAGEPISTOL_CLIP_02' },
+        heavypistol   = { flashlight = 'COMPONENT_AT_PI_FLSH', suppressor = 'COMPONENT_AT_PI_SUPP', extclip = 'COMPONENT_HEAVYPISTOL_CLIP_02' },
+        pistol50      = { flashlight = 'COMPONENT_AT_PI_FLSH', suppressor = 'COMPONENT_AT_AR_SUPP_02', extclip = 'COMPONENT_PISTOL50_CLIP_02' },
+        microsmg      = { flashlight = 'COMPONENT_AT_PI_FLSH', suppressor = 'COMPONENT_AT_AR_SUPP_02', scope = 'COMPONENT_AT_SCOPE_MACRO', extclip = 'COMPONENT_MICROSMG_CLIP_02' },
+        machinepistol = { suppressor = 'COMPONENT_AT_PI_SUPP', extclip = 'COMPONENT_MACHINEPISTOL_CLIP_02' },
+        smg           = { flashlight = 'COMPONENT_AT_AR_FLSH', suppressor = 'COMPONENT_AT_PI_SUPP', scope = 'COMPONENT_AT_SCOPE_MACRO_02', extclip = 'COMPONENT_SMG_CLIP_02' },
+        combatpdw     = { flashlight = 'COMPONENT_AT_AR_FLSH', grip = 'COMPONENT_AT_AR_AFGRIP', scope = 'COMPONENT_AT_SCOPE_SMALL', extclip = 'COMPONENT_COMBATPDW_CLIP_02' },
+        carbinerifle  = { flashlight = 'COMPONENT_AT_AR_FLSH', suppressor = 'COMPONENT_AT_AR_SUPP', grip = 'COMPONENT_AT_AR_AFGRIP', scope = 'COMPONENT_AT_SCOPE_MEDIUM', extclip = 'COMPONENT_CARBINERIFLE_CLIP_02' },
+        assaultrifle  = { flashlight = 'COMPONENT_AT_AR_FLSH', suppressor = 'COMPONENT_AT_AR_SUPP_02', grip = 'COMPONENT_AT_AR_AFGRIP', scope = 'COMPONENT_AT_SCOPE_MACRO', extclip = 'COMPONENT_ASSAULTRIFLE_CLIP_02' },
+        compactrifle  = { extclip = 'COMPONENT_COMPACTRIFLE_CLIP_02' },
+        pumpshotgun   = { flashlight = 'COMPONENT_AT_AR_FLSH', suppressor = 'COMPONENT_AT_SR_SUPP' },
+    },
+    Clips = {
+        pistol = 16, combatpistol = 16, snspistol = 12, vintagepistol = 14, heavypistol = 36, pistol50 = 12,
+        microsmg = 30, machinepistol = 20, smg = 60, combatpdw = 60, carbinerifle = 60, assaultrifle = 60, compactrifle = 60,
+    },
+}
+
+do
+    local descriptions = {
+        flashlight = 'Weapon light. Hold a gun and use it to fit it. Toggle the light with E while aiming.',
+        suppressor = 'Quiets the gun and keeps it off ShotSpotter. Hold a gun and use it to fit it.',
+        grip = 'Foregrip for less recoil. Fits rifles and the Combat PDW.',
+        scope = 'Sight for SMGs and rifles. Hold the gun and use it to fit it.',
+        extclip = 'Bigger magazine. Hold a gun and use it to fit it.',
+    }
+    for key, t in pairs(WeaponMods.Types) do
+        -- Which guns it fits, for the tooltip.
+        local fits = {}
+        for weapon, mods in pairs(WeaponMods.Weapons) do
+            if mods[key] and Items[weapon] then fits[#fits + 1] = Items[weapon].label end
+        end
+        table.sort(fits)
+        Items[t.item] = {
+            label = t.label, weight = key == 'suppressor' and 300 or 200, stack = true, usable = true, category = 'weapon',
+            description = ('%s Fits: %s.'):format(descriptions[key], table.concat(fits, ', ')),
+        }
+    end
+end

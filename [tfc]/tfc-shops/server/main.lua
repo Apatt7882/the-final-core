@@ -561,7 +561,11 @@ end)
 
 exports('GetShopTypes', function()
     local list = {}
-    for name, def in pairs(Types) do list[name] = { label = def.label } end
+    for name, def in pairs(Types) do
+        local items = {}
+        for _, e in ipairs(def.items or {}) do items[#items + 1] = { name = e.name, price = e.price } end
+        list[name] = { label = def.label, items = items }
+    end
     return list
 end)
 
