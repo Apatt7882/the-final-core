@@ -222,6 +222,15 @@ local function SetDuty(src, onDuty)
     onDuty = onDuty == true
     if state.onDuty == onDuty then return true end
 
+    -- Some jobs can only clock in at a place (e.g. clerks at a store): ask the resource that knows.
+    local check = Jobs[state.name].dutyCheck
+    if onDuty and check then
+        if GetResourceState(check) ~= 'started' then return false, ('%s is not running'):format(check) end
+        local okCall, allowed, why = pcall(function() return exports[check]:CanGoOnDuty(src, state.name) end)
+        if not okCall then return false, 'could not check where you are' end
+        if not allowed then return false, why or 'you can\'t clock in here' end
+    end
+
     state.onDuty = onDuty
     JobsSrv.Publish(src)
     TFC.Emit('dutyChanged', src, onDuty, JobsSrv.View(state))
@@ -273,11 +282,12 @@ exports('GetJobs', function() return Jobs end)
 exports('RegisterJob', function(name, def) return JobsSrv.RegisterJob(name, def) end)
 exports('GetTopGrade', function(name) return Jobs[name] and JobsSrv.MaxGrade(name) or nil end)
 
----Is this player earning right now? (Duty jobs only pay while on duty.)
+---Is this player earning right now? Always, unless PayOnDutyOnly is set (then duty jobs need /duty).
 local function isWorking(state)
     local job = Jobs[state.name]
     if not job then return false end
-    return job.noDuty or state.onDuty or JobsConfig.PayOffDuty
+    if not JobsConfig.PayOnDutyOnly then return true end
+    return job.noDuty or state.onDuty
 end
 JobsSrv.IsWorking = isWorking
 
@@ -286,7 +296,7 @@ JobsSrv.IsWorking = isWorking
 TFC.On('playerLoaded', function(src)
     CreateThread(function()
         local state = JobsSrv.Load(src)
-        -- Duty always starts off: remind people with a paid duty job to clock in.
+        -- Duty always starts off: when only on-duty work is paid, remind people to clock in.
         if state and not isWorking(state) then
             local grade = Jobs[state.name].grades[state.grade]
             if grade and (grade.pay or 0) > 0 then
@@ -339,7 +349,12 @@ function JobsSrv.RunPayroll()
         end
     end)
     if not okCount then TFC.Log.Error('payroll failed: %s', tostring(countErr)) end
-    if #due == 0 then return 0 end
+    local loaded = 0
+    for _ in pairs(cache) do loaded = loaded + 1 end
+    if #due == 0 then
+        TFC.Log.Info('payroll: nobody to pay (%d character(s) loaded)', loaded)
+        return 0
+    end
 
     if GetResourceState('tfc-accounts') ~= 'started' then
         TFC.Log.Warn('%d paycheck(s) skipped: tfc-accounts is not started', #due)
@@ -367,6 +382,7 @@ end
 CreateThread(function()
     local step = interval()
     local nextPay = (os.time() // step + 1) * step
+    TFC.Log.Info('next paycheck at %s server time', os.date('%H:%M', nextPay))
     while true do
         -- Short sleeps so a long server hitch can't push payday back by a whole interval.
         Wait(math.min(30, math.max(1, nextPay - os.time())) * 1000)
@@ -413,6 +429,12 @@ TFC.RegisterCommand('job', { help = 'Show your job, rank and pay' }, function(sr
         end
     end
     JobsSrv.Notify(src, text)
+end)
+
+TFC.RegisterCommand('payday', { help = 'Admin: pay everyone their paycheck now (testing)', permission = TFC.Permissions.Admin }, function(src)
+    local n = JobsSrv.RunPayroll()
+    local text = ('Paid %d paycheck(s). Next scheduled payday in %d min.'):format(n, math.ceil(JobsSrv.SecondsToPayday() / 60))
+    if src == 0 then TFC.Log.Info(text) else JobsSrv.Notify(src, text, 'success') end
 end)
 
 TFC.RegisterCommand('setjob', {

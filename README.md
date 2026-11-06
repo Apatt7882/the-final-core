@@ -57,6 +57,7 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
    ensure tfc-banking
    ensure tfc-shops
    ensure tfc-business
+   ensure tfc-civjobs
    ensure tfc-government
    ensure tfc-finance
    ensure tfc-medical
@@ -92,6 +93,27 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
 
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
+
+## Check that the paycheck, world clock and store clerk fixes work
+
+**Paychecks:** everyone with a loaded character is paid their rank's pay every 15 minutes on the clock
+(HH:00/15/30/45 server time), on or off duty, employed or not (Unemployed = $50). The server console prints
+`next paycheck at HH:MM` on start and `payroll: N paycheck(s)` each payday. Admins can force one with `/payday`.
+To go back to on-duty-only pay, set `PayOnDutyOnly = true` in `tfc-jobs/config.lua`.
+
+**World clock:** clients now get the time straight from the server and re-apply it every frame, so a wrong PC
+clock no longer matters. If the time still jumps, type `/worldcheck`: it shows how often something else changed
+the clock, the vMenu convars as your game sees them, and any running resource that might set time or weather.
+
+**Convenience Store Clerk** (`tfc-civjobs`, ensure after `tfc-business`):
+
+| Do | Expect |
+| --- | --- |
+| Government Center > Jobs > Convenience Store Clerk | You're a Clerk (rank 0, $150 a paycheck) |
+| Walk into any 24/7 store | Hint: "You can work at 24/7 Store..." (not at privately owned stores) |
+| At the counter: F6 > Clock in / out (or `/duty`) | Clocked in at that store; anywhere else it refuses |
+| Walk more than 60 m away for 30 s | Warned, then clocked out |
+| An admin gives the store an owner while you work | Clocked out |
 
 ## Check that the Quality of Life phase works (Government Center, DMV, Accountant)
 

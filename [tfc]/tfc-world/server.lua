@@ -157,6 +157,12 @@ TFC.Callback.Register('world:set', function(src, action, a, b)
     return r
 end, { rateLimit = 250 })
 
+-- Every client asks for the clock itself (on join, after changes and every minute) and counts
+-- from there with its own game timer, so it never depends on the player's PC clock.
+TFC.Callback.Register('world:now', function()
+    return { seconds = gameSeconds(), frozen = state.clock.frozen == true, rate = state.clock.rate }
+end, { rateLimit = 1000 })
+
 TFC.Callback.Register('world:state', function(src)
     if not TFC.IsAdmin(src) then return { ok = false, error = 'admins only' } end
     local r = GetState()
@@ -180,7 +186,7 @@ CreateThread(function()
 end)
 
 CreateThread(function()
-    TFC.RegisterModule({ name = 'world', version = '0.1.0' }, function()
+    TFC.RegisterModule({ name = 'world', version = '0.2.0' }, function()
         local t = GetTime()
         TFC.Log.Info('world ready: %02d:%02d%s, %s%s%s', t.hour, t.minute, state.clock.frozen and ' (frozen)' or '',
             state.weather, state.blackout and ', blackout' or '', state.snow and ', snow' or '')

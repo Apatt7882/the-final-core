@@ -3,12 +3,12 @@ JobsConfig = {
     DefaultJob = 'unemployed',
 
     ---Paychecks are paid on the clock every this many minutes (server time): 15 = HH:00, HH:15,
-    ---HH:30, HH:45. Everyone working at that moment is paid into their bank. Use a number
-    ---that divides 60 (5, 10, 15, 20, 30, 60).
+    ---HH:30, HH:45. Every loaded character gets their rank's pay into their bank, on or off duty,
+    ---employed or not. Use a number that divides 60 (5, 10, 15, 20, 30, 60).
     PaycheckMinutes = 15,
 
-    ---Pay people in duty jobs while they're off duty? Usually false.
-    PayOffDuty = false,
+    ---true = only pay duty jobs (police, EMS, clerk...) while on duty. false = pay everyone, always.
+    PayOnDutyOnly = false,
 
     ---Bosses can set each rank's pay within the job's payRange (or this default).
     DefaultPayRange = { min = 0, max = 1000 },
@@ -28,6 +28,7 @@ JobsConfig = {
     ---Jobs. Grades start at 0 and go up; the highest number is the most senior.
     ---  label        shown on the HUD and in messages
     ---  noDuty       job has no duty toggle (always counts as working)
+    ---  dutyCheck    resource whose CanGoOnDuty(src, job) export must allow clocking in
     ---  payRange     { min, max } a boss may set any rank's pay to (default: DefaultPayRange)
     ---  public       anyone can sign up at the Government Center (starts at rank 0)
     ---  description  shown on the Government Center job board
@@ -80,6 +81,19 @@ JobsConfig = {
                 [1] = { label = 'Mechanic', pay = 300 },
                 [2] = { label = 'Lead Mechanic', pay = 400 },
                 [3] = { label = 'Owner', pay = 500, boss = true },
+            },
+        },
+
+        clerk = {
+            label = 'Convenience Store Clerk',
+            public = true,
+            description = 'Run the counter at any 24/7 store that is not privately owned. Clock in at the store.',
+            dutyCheck = 'tfc-civjobs', -- going on duty is only allowed at a store (checked by tfc-civjobs)
+            payRange = { min = 100, max = 500 },
+            grades = {
+                [0] = { label = 'Clerk', pay = 150 },
+                [1] = { label = 'Senior Clerk', pay = 200 },
+                [2] = { label = 'Shift Supervisor', pay = 250, boss = true },
             },
         },
 

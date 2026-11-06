@@ -67,7 +67,8 @@ function CityActions.apply(src, d)
     local ok, err = exports['tfc-jobs']:SetJob(src, d.job, 0)
     if not ok then return fail(err) end
     TFC.Log.Info('%s signed up as %s at the Government Center', TFC.GetPlayer(src):GetFullName(), job.label)
-    return { ok = true, message = ('Welcome to %s! Go on duty with /duty to start earning.'):format(job.label) }
+    local hint = job.dutyCheck and ' Head to any 24/7 store and clock in (F6 or /duty) to start working.' or ''
+    return { ok = true, message = ('Welcome to %s! Your paycheck changes from the next payday.%s'):format(job.label, hint) }
 end
 
 function CityActions.quit(src)

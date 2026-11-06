@@ -33,6 +33,7 @@
         "GovQuizzes",
         "FinanceConfig",
         "FinSrv",
+        "CivJobsConfig",
         "source",
         "exports",
         "Citizen",

@@ -58,7 +58,7 @@ GovConfig = {
         steps = {
             { title = "Get your driver's license", text = 'Visit the DMV. A basic license needs no test.', place = 'dmv' },
             { title = 'Set up your bank', text = 'Set a 4-digit ATM PIN at any bank teller so ATMs work.', place = 'bank' },
-            { title = 'Find a job', text = 'Sign up for a public job on the Jobs tab. Paychecks come every 15 minutes while on duty.', tab = 'jobs' },
+            { title = 'Find a job', text = 'Sign up for a public job on the Jobs tab. Everyone gets a paycheck every 15 minutes; a job pays more than unemployment.', tab = 'jobs' },
             { title = 'Meet the Accountant', text = 'Free advice on your money, debt and investing, right here.', action = 'accountant' },
         },
         places = {

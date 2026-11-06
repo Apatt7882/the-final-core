@@ -128,11 +128,7 @@ function FinSrv.advice(s)
 
     if s.job then
         if s.job.unemployed then
-            add('tip', 'Get a job', 'Sign up for a public job at the Government Center. Every job pays a paycheck every 15 minutes while you\'re on duty.')
-        elseif s.job.onDuty == false and s.job.pay > 0 then
-            add('tip', ('Clock in to earn %s per paycheck'):format(money(s.job.pay)),
-                ('As %s you\'re paid %s four times an hour, but only while on duty (/duty). That\'s %s an hour.'):format(
-                    s.job.label, money(s.job.pay), money(s.job.pay * 4)))
+            add('tip', 'Get a job', ('Unemployment pays %s every 15 minutes. Any public job at the Government Center pays more.'):format(money(s.job.pay)))
         end
     end
 
@@ -186,7 +182,7 @@ local asked = {}   -- src -> { last = os.time(), day = 'YYYY-MM-DD', count = n }
 local SYSTEM = [[You are the City Accountant at the Government Center in a GTA V roleplay city (The Final Core).
 You help one citizen with their in-game money. All money is in-game dollars; never give real-world financial,
 legal or tax advice, and if asked about real money say you only handle the city's finances.
-How the city works: paychecks are paid by the government every 15 minutes while on duty; jobs are at the
+How the city works: paychecks are paid by the government to everyone every 15 minutes (on or off duty); jobs are at the
 Government Center; banks and ATMs handle deposits, withdrawals and transfers; police/EMS bills can't be declined;
 the credit line charges interest weekly; the stock market (at banks or with you) has fictional companies and a 1%
 fee per trade; prices swing and drift back toward their usual level; businesses can be owned (ask an admin).
