@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 8a (world sync)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 8b (banking and billing)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -28,6 +28,7 @@ Status: **phase 8a (world sync)**. Phases 1-4 are done; phase 5 (ESX/QB bridges)
   tfc-accounts/       -- cash, bank and credit; transaction log
   tfc-hud/            -- date/time, money, job, location and who's-on HUD (NUI)
   tfc-world/          -- synced time and weather, blackout, holiday snow
+  tfc-banking/        -- banks, ATMs, transfers, bills, credit, department accounts (NUI)
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
   tfc-shops/          -- stores, dealers, armories; buy/sell, stock, admin shop manager (NUI)
@@ -52,6 +53,7 @@ Status: **phase 8a (world sync)**. Phases 1-4 are done; phase 5 (ESX/QB bridges)
    ensure tfc-inventory
    ensure tfc-accounts
    ensure tfc-jobs
+   ensure tfc-banking
    ensure tfc-shops
    ensure tfc-medical
    ensure tfc-police
@@ -81,6 +83,27 @@ Status: **phase 8a (world sync)**. Phases 1-4 are done; phase 5 (ESX/QB bridges)
 
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
+
+## Check that phase 8b works (banking and billing)
+
+Ensure `tfc-banking` (after `tfc-jobs`). Tables `tfc_bills`, `tfc_society_accounts` and `tfc_society_transactions`
+are created automatically.
+
+| Do | Expect |
+| --- | --- |
+| Walk up to a Fleeca teller (green $ blip), press E | Bank: overview (bank, cash, credit available), deposit/withdraw, recent activity |
+| ATM PIN tab: set a 4-digit PIN | "PIN saved"; ATMs now work |
+| Walk up to any ATM, press E | PIN keypad (type or click). 3 wrong PINs lock ATMs for 5 minutes |
+| ATM: $20 / $50 ... / other amount | Withdraw and deposit only (transfers, bills, credit are bank-only) |
+| Bank > Transfer: player ID, Look up, amount, Send | Shows their name before sending; they get a notice; both histories show it |
+| Bank > History | Every money change, newest first, with paging |
+| As police/EMS/mechanic/taxi on duty: F6 > Send bill, or `/bill id amount reason` | Player gets a notice and a red badge on Bills |
+| `/bills` anywhere, or Bank > Bills | Pay (bank first, then credit for the rest) or Decline. Police and EMS bills can't be declined. The sender is told |
+| Bank > Credit | Owed, available, limit, next interest date; Repay / Repay all (as much as your bank covers) |
+
+Paid bills, police fines and early hospital bills go into the job's **department account** (`tfc_society_accounts`),
+ready for the department/business accounts phase. Credit interest: 2% of what's owed, every 7 days, never past the
+credit limit (offline characters too). Rates, banks, jobs that can bill and limits are in `tfc-banking/config.lua`.
 
 ## Check that phase 8a works (world sync)
 
@@ -445,6 +468,17 @@ Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 
 Server hooks: `shopPurchase(source, shopId, item, count, total, payment)`, `shopSale(source, shopId, item, count, total, account)`.
 Admin: `/shops`.
+
+### Banking (phase 8b, `exports['tfc-banking']`, server)
+
+| Call | Notes |
+| --- | --- |
+| `CreateBill({ target, amount, reason, sourceType, sourceName, sourceLabel, sender?, mandatory? })` | for businesses and other jobs |
+| `GetPendingBills(src)` | |
+| `GetSociety(name)`, `AddSociety(name, amount, reason)`, `RemoveSociety(name, amount, reason)` | department/business accounts |
+
+Hooks: `billCreated(bill)`, `billPaid(bill)`, `billDeclined(bill)`, `societyChanged(name, balance, delta, reason)`.
+`tfc-accounts` adds `ApplyCreditInterest(rate, reason)`.
 
 ### World (phase 8a, `exports['tfc-world']`, server)
 

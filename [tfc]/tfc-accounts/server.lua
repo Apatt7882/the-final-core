@@ -65,7 +65,7 @@ CreateThread(function()
     end
     tablesReady = true
 
-    TFC.RegisterModule({ name = 'accounts', version = '0.2.0' }, function()
+    TFC.RegisterModule({ name = 'accounts', version = '0.2.1' }, function()
         TFC.Log.Info('accounts ready: %s', table.concat((function()
             local names = {}
             for name in pairs(Accounts) do names[#names + 1] = name end
@@ -342,6 +342,48 @@ local function RegisterAccount(name, def)
     return true
 end
 
+---Charge interest on every negative credit balance (online and offline characters).
+---Interest never pushes a balance past the credit limit.
+---@param rate number e.g. 0.02 for 2%
+---@return integer charged number of characters charged
+local function ApplyCreditInterest(rate, reason)
+    rate = tonumber(rate) or 0
+    if rate <= 0 or not Accounts.credit then return 0 end
+    reason = cleanReason(reason or 'credit interest')
+    local min = bounds('credit')
+    local charged, online = 0, {}
+
+    for src, entry in pairs(cache) do
+        online[entry.charId] = true
+        local bal = entry.balances.credit or 0
+        if bal < 0 then
+            local interest = math.min(math.ceil(-bal * rate), bal - min)
+            if interest > 0 and change(src, 'credit', -interest, reason) then charged = charged + 1 end
+        end
+    end
+
+    for _, row in ipairs(MySQL.query.await("SELECT character_id, balance FROM tfc_accounts WHERE name = 'credit' AND balance < 0", {}) or {}) do
+        local charId = math.tointeger(row.character_id)
+        local bal = math.tointeger(row.balance) or 0
+        if charId and not online[charId] then
+            local interest = math.min(math.ceil(-bal * rate), bal - min)
+            if interest > 0 then
+                local n = MySQL.update.await("UPDATE tfc_accounts SET balance = balance - ? WHERE character_id = ? AND name = 'credit' AND balance = ?",
+                    { interest, charId, bal })
+                if (n or 0) > 0 then
+                    charged = charged + 1
+                    if AccountsConfig.LogTransactions then
+                        MySQL.insert('INSERT INTO tfc_transactions (character_id, account, amount, balance, reason) VALUES (?, ?, ?, ?, ?)',
+                            { charId, 'credit', -interest, bal - interest, reason })
+                    end
+                end
+            end
+        end
+    end
+    return charged
+end
+
+exports('ApplyCreditInterest', ApplyCreditInterest)
 exports('GetBalance', GetBalance)
 exports('GetBalances', GetBalances)
 exports('AddMoney', AddMoney)

@@ -171,6 +171,10 @@ TFC.Callback.Register('medical:respawn', function(src)
             local wait = opt.freeIn or 0
             return { ok = false, error = ('you can\'t afford the $%d bill. Free respawn in %d:%02d'):format(opt.fee, wait // 60, wait % 60) }
         end
+        -- The bill goes into the EMS department's account (tfc-banking).
+        if GetResourceState('tfc-banking') == 'started' then
+            exports['tfc-banking']:AddSociety(Cfg.EmsJobs[1] or 'ambulance', opt.fee, ('Hospital bill: %s'):format(displayName(src)))
+        end
     end
 
     Revive(src, true, 0, hospital.coords)

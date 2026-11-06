@@ -57,13 +57,38 @@ AddStateBagChangeHandler('tfc:world', 'global', function(_, _, value)
     update(value, false)
 end)
 
+-- Another script that also sets the clock (usually vMenu's time sync) makes the time jump back
+-- and forth. Spot it: just before we set the clock, it should already be within a few game
+-- minutes of what we set a second ago.
+local conflicts = 0
+local warned = false
+
+local function checkConflict(expected)
+    local now = GetClockHours() * 3600 + GetClockMinutes() * 60 + GetClockSeconds()
+    local diff = math.abs(now - expected)
+    diff = math.min(diff, DAY - diff)
+    if diff > 300 then conflicts = conflicts + 1 else conflicts = 0 end
+    if conflicts >= 3 and not warned then
+        warned = true
+        local msg = 'Another resource keeps changing the game clock (usually vMenu time sync). '
+            .. 'Set "setr vmenu_enable_time_sync false" and "setr vmenu_enable_weather_sync false" in server.cfg.'
+        print('^3[tfc-world] ' .. msg .. '^7')
+        if LocalPlayer.state['tfc:admin'] then
+            TFC.UI.Notify({ title = 'World sync', description = msg, type = 'warning', duration = 15000 })
+        end
+    end
+end
+
 CreateThread(function()
     update(GlobalState['tfc:world'], true)
     local tick = 0
+    local lastSet = nil
     while true do
         if world then
             local s = gameSeconds()
+            if lastSet and not world.clock.frozen then checkConflict(s) end
             NetworkOverrideClockTime(s // 3600, (s % 3600) // 60, s % 60)
+            lastSet = s
 
             -- Every 10 s re-apply weather and lights in case something else changed them.
             tick = tick + 1

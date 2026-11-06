@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bank</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+
+        <!-- Bank (and bills-only mode) -->
+        <main class="window bank hidden" id="bank" role="dialog" aria-modal="true" aria-labelledby="b-title">
+            <header class="head">
+                <div>
+                    <p class="brand" id="b-brand">Fleeca Bank</p>
+                    <h1 id="b-title">Welcome</h1>
+                </div>
+                <div class="head-right">
+                    <div class="wallet" id="b-wallet"></div>
+                    <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
+            </header>
+
+            <div class="bank-body">
+                <nav class="side-nav" id="b-nav">
+                    <button data-page="overview" class="on">Overview</button>
+                    <button data-page="transfer">Transfer</button>
+                    <button data-page="bills">Bills <span class="badge hidden" id="b-bills-badge"></span></button>
+                    <button data-page="history">History</button>
+                    <button data-page="credit">Credit</button>
+                    <button data-page="settings">ATM PIN</button>
+                </nav>
+
+                <section class="page" data-page="overview">
+                    <div class="cards" id="o-cards"></div>
+                    <div class="panel">
+                        <h3>Cash</h3>
+                        <div class="amount-row">
+                            <span class="dollar">$</span>
+                            <input id="o-amount" type="number" min="1" placeholder="Amount" inputmode="numeric">
+                            <button class="secondary" id="o-deposit">Deposit</button>
+                            <button class="secondary" id="o-withdraw">Withdraw</button>
+                        </div>
+                        <div class="quick">
+                            <button class="ghost small" data-quick="100">$100</button>
+                            <button class="ghost small" data-quick="500">$500</button>
+                            <button class="ghost small" data-quick="1000">$1,000</button>
+                            <button class="ghost small" data-quick="cash">All cash</button>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h3>Recent activity</h3>
+                        <div id="o-recent"></div>
+                    </div>
+                </section>
+
+                <section class="page hidden" data-page="transfer">
+                    <div class="panel narrow">
+                        <h3>Send money</h3>
+                        <p class="muted">Send from your bank to a player who is in the city. Their server ID is shown in the scoreboard.</p>
+                        <label class="field-label" for="t-id">Player ID</label>
+                        <div class="amount-row">
+                            <input id="t-id" type="number" min="1" placeholder="e.g. 12">
+                            <button class="secondary" id="t-lookup">Look up</button>
+                        </div>
+                        <p class="who" id="t-who"></p>
+                        <label class="field-label" for="t-amount">Amount</label>
+                        <div class="amount-row"><span class="dollar">$</span><input id="t-amount" type="number" min="1"></div>
+                        <label class="field-label" for="t-note">Note <span class="opt">optional</span></label>
+                        <input id="t-note" maxlength="60" autocomplete="off" placeholder="e.g. Rent">
+                        <button class="primary" id="t-send" disabled>Send</button>
+                    </div>
+                </section>
+
+                <section class="page hidden" data-page="bills">
+                    <h3 class="page-title">To pay</h3>
+                    <div id="bills-pending"></div>
+                    <h3 class="page-title">Past bills</h3>
+                    <div id="bills-closed"></div>
+                </section>
+
+                <section class="page hidden" data-page="history">
+                    <table class="table">
+                        <thead><tr><th>When</th><th>What</th><th>Account</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead>
+                        <tbody id="h-rows"></tbody>
+                    </table>
+                    <div class="pager">
+                        <button class="ghost small" id="h-prev">Newer</button>
+                        <span class="muted" id="h-page"></span>
+                        <button class="ghost small" id="h-next">Older</button>
+                    </div>
+                </section>
+
+                <section class="page hidden" data-page="credit">
+                    <div class="cards" id="c-cards"></div>
+                    <div class="panel narrow">
+                        <h3>Repay</h3>
+                        <p class="muted" id="c-info"></p>
+                        <div class="amount-row">
+                            <span class="dollar">$</span>
+                            <input id="c-amount" type="number" min="1" placeholder="Amount">
+                            <button class="secondary" id="c-repay">Repay</button>
+                            <button class="secondary" id="c-all">Repay all</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="page hidden" data-page="settings">
+                    <div class="panel narrow">
+                        <h3 id="p-title">Set up your ATM PIN</h3>
+                        <p class="muted">You need a 4-digit PIN to use ATMs. Keep it to yourself.</p>
+                        <div id="p-old-wrap">
+                            <label class="field-label" for="p-old">Current PIN</label>
+                            <input id="p-old" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+                        </div>
+                        <label class="field-label" for="p-new">New PIN</label>
+                        <input id="p-new" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+                        <label class="field-label" for="p-new2">Repeat new PIN</label>
+                        <input id="p-new2" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+                        <button class="primary" id="p-save">Save PIN</button>
+                    </div>
+                </section>
+            </div>
+            <p class="msg footer-msg" id="b-msg" role="status"></p>
+        </main>
+
+        <!-- ATM -->
+        <main class="window atm hidden" id="atm" role="dialog" aria-modal="true" aria-label="ATM">
+            <header class="atm-head">
+                <span class="brand">ATM</span>
+                <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            </header>
+
+            <div class="atm-pin" id="atm-pin">
+                <p class="atm-label">Enter your PIN</p>
+                <div class="dots" id="atm-dots"><span></span><span></span><span></span><span></span></div>
+                <div class="keypad" id="atm-keys">
+                    <button>1</button><button>2</button><button>3</button>
+                    <button>4</button><button>5</button><button>6</button>
+                    <button>7</button><button>8</button><button>9</button>
+                    <button data-k="clear" class="muted-key">Clear</button><button>0</button><button data-k="ok" class="ok-key">OK</button>
+                </div>
+            </div>
+
+            <div class="atm-main hidden" id="atm-main">
+                <div class="atm-balances" id="atm-balances"></div>
+                <div class="atm-quick" id="atm-quick">
+                    <button data-w="20">$20</button><button data-w="50">$50</button>
+                    <button data-w="100">$100</button><button data-w="200">$200</button>
+                    <button data-w="500">$500</button><button data-w="1000">$1,000</button>
+                </div>
+                <div class="amount-row">
+                    <span class="dollar">$</span>
+                    <input id="atm-amount" type="number" min="1" placeholder="Other amount">
+                </div>
+                <div class="atm-actions">
+                    <button class="secondary" id="atm-deposit">Deposit</button>
+                    <button class="primary" id="atm-withdraw">Withdraw</button>
+                </div>
+            </div>
+            <p class="msg" id="atm-msg" role="status"></p>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

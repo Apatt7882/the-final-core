@@ -169,6 +169,16 @@ end, { rateLimit = 250 })
 load()
 publish()
 
+-- vMenu's own sync fights with this one (the clock and weather flip back and forth).
+CreateThread(function()
+    Wait(2000)
+    for _, convar in ipairs({ 'vmenu_enable_time_sync', 'vmenu_enable_weather_sync' }) do
+        if GetConvar(convar, 'false') == 'true' then
+            TFC.Log.Warn('%s is on: vMenu will fight tfc-world. Add "setr %s false" to server.cfg.', convar, convar)
+        end
+    end
+end)
+
 CreateThread(function()
     TFC.RegisterModule({ name = 'world', version = '0.1.0' }, function()
         local t = GetTime()

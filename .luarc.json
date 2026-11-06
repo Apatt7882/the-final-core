@@ -24,6 +24,8 @@
         "AdminClient",
         "AdminNoclip",
         "WorldConfig",
+        "BankingConfig",
+        "BankSrv",
         "source",
         "exports",
         "Citizen",

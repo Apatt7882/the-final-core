@@ -184,14 +184,13 @@ local function record(kind, target, officer, amount, minutes, reason)
     })
 end
 
----Take a fine: all from the first account if it can, otherwise what the first account has
----and the rest from the second (e.g. bank, then credit up to its limit).
+---Take a fine: all from the first account if it can, otherwise everything the first account
+---has and the rest from the second (e.g. bank, then credit up to its limit).
 ---@return boolean ok, string|nil paidFrom
 local function payFine(target, amount, reason)
     local acc = exports['tfc-accounts']
     local first, second = Cfg.FineFrom[1], Cfg.FineFrom[2]
-    local ok, account = acc:Charge(target, amount, reason, Cfg.FineFrom)
-    if ok then return true, account end
+    if acc:RemoveMoney(target, first, amount, reason) then return true, first end
     if not second then return false end
 
     local have = math.max(0, math.tointeger((acc:GetBalance(target, first))) or 0)
@@ -217,6 +216,11 @@ function Actions.fine(src, target, amount, reason)
     if not paid then return fail(('%s can\'t pay $%d (bank and credit limit reached)'):format(name(t), amount)) end
 
     record('fine', t, src, amount, nil, reason)
+    -- Fines go into the police department's account (tfc-banking).
+    if GetResourceState('tfc-banking') == 'started' then
+        local job = exports['tfc-jobs']:GetJob(src)
+        exports['tfc-banking']:AddSociety(job and job.name or 'police', amount, ('Fine: %s (%s)'):format(name(t), reason))
+    end
     TFC.Emit('playerFined', t, src, amount, reason)
     notify(t, ('You were fined $%d: %s (paid from %s)'):format(amount, reason, account), 'warning')
     TFC.Log.Info('%s fined %s $%d: %s', name(src), name(t), amount, reason)
