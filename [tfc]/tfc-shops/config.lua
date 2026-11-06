@@ -23,7 +23,8 @@ ShopsConfig = {
     payment   accounts the player can pay with: 'cash', 'bank', 'credit'. Order = default first
     hours     { open, close } in hours (0-23); may wrap past midnight, e.g. { 20, 5 }. nil = always open
     job       { name = 'police', grade = 0, duty = true } -> only that job (at least that rank, on duty)
-    items     what the shop sells: { name, price, stock?, grade? }
+    items     what the shop sells: { name, price, stock?, grade?, license? }
+                license = a license (tfc-government) the buyer must hold, e.g. 'weapon'
                 stock = limited, restocks up to this amount; nil = unlimited
                 grade = minimum job rank for this item (job-locked shops)
     restock   { minutes, amount } how limited stock refills
@@ -58,10 +59,10 @@ ShopsConfig.Types = {
             { name = 'knife', price = 150 },
             { name = 'bat', price = 90 },
             { name = 'golfclub', price = 120 },
-            { name = 'snspistol', price = 1800 },
-            { name = 'pistol', price = 2500 },
-            { name = 'vintagepistol', price = 3200 },
-            { name = 'pumpshotgun', price = 6500 },
+            { name = 'snspistol', price = 1800, license = 'weapon' },
+            { name = 'pistol', price = 2500, license = 'weapon' },
+            { name = 'vintagepistol', price = 3200, license = 'weapon' },
+            { name = 'pumpshotgun', price = 6500, license = 'weapon' },
             { name = 'ammo_9mm', price = 3 },
             { name = 'ammo_12g', price = 8 },
             { name = 'weapon_kit', price = 200 },

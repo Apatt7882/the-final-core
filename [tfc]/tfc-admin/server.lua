@@ -316,6 +316,11 @@ TFC.RegisterCommand('tp', {
     log(src, 'teleported to %.1f, %.1f, %s', x, y, z and ('%.1f'):format(z) or 'ground')
 end)
 
+TFC.RegisterCommand('coords', { help = 'Admin: show your position (vector4) for config files', permission = ADMIN }, function(src)
+    if src == 0 then return end
+    TriggerClientEvent('tfc-admin:client:coords', src)
+end)
+
 TFC.RegisterCommand('back', { help = 'Admin: go back to where you were before your last teleport', permission = ADMIN }, function(src)
     if src == 0 then return end
     TriggerClientEvent('tfc-admin:client:back', src)

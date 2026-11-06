@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Government</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+        <main class="window" role="dialog" aria-modal="true" aria-labelledby="title">
+            <header class="head">
+                <div>
+                    <p class="brand" id="brand">State of San Andreas</p>
+                    <h1 id="title">Government Center</h1>
+                </div>
+                <div class="head-right">
+                    <button class="icon-btn" id="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
+            </header>
+            <nav class="tabs" id="tabs" role="tablist"></nav>
+            <section class="body" id="body"></section>
+            <p class="msg" id="msg" role="status"></p>
+        </main>
+
+        <!-- DMV test -->
+        <div class="modal hidden" id="quiz" role="dialog" aria-modal="true" aria-labelledby="quiz-title">
+            <div class="modal-card">
+                <p class="brand">DMV test</p>
+                <h2 id="quiz-title"></h2>
+                <div id="quiz-body"></div>
+                <div class="modal-actions">
+                    <button class="ghost" id="quiz-cancel">Cancel</button>
+                    <button class="primary" id="quiz-submit">Submit answers</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

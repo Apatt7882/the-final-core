@@ -57,6 +57,8 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
    ensure tfc-banking
    ensure tfc-shops
    ensure tfc-business
+   ensure tfc-government
+   ensure tfc-finance
    ensure tfc-medical
    ensure tfc-police
    ensure tfc-admin
@@ -67,6 +69,11 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
    add_ace group.admin tfc.admin allow
    # Make someone an admin (their license is in tfc_users):
    add_principal identifier.license:<license> group.admin
+
+   # Optional: real AI answers from the City Accountant (Claude API). Use `set`, NOT `setr`:
+   # setr would send your key to every player.
+   # set tfc_ai_key "sk-ant-..."
+   # set tfc_ai_model "claude-haiku-5-5"
    ```
 
    The old per-command lines (`command.givemoney`, `command.setjob`, ...) are no longer needed and can be removed.
@@ -85,6 +92,31 @@ Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (
 
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
+
+## Check that the Quality of Life phase works (Government Center, DMV, Accountant)
+
+Ensure `tfc-government` and `tfc-finance` after `tfc-shops` and `tfc-business`. Tables are created automatically.
+Locations, peds and prices are in each `config.lua` (use `/coords` to grab new spots).
+
+**Government Center** (City Hall, blip): Welcome steps, public jobs, license guide, services (ID card $50, waypoints,
+Accountant), help and rules. Jobs show here when they have `public = true` in `tfc-jobs/config.lua` (taxi, mechanic).
+
+| Do | Expect |
+| --- | --- |
+| City Hall > Jobs > Sign up | You get grade 0 of that job; police/EMS can't be joined here |
+| Services > ID card | $50, a new `id_card` with your name, CID and DOB |
+| DMV > Driver's License | $500, no test; card in your pocket lists your classes (C, M, CDL, H) |
+| Motorcycle / CDL / HazMat / Weapon / Boat / Pilot | 5-question test, 4 right to pass, then pay ($1,000 for M/CDL/HazMat) |
+| Lost a card | Replacement $250 while the license is valid |
+| Ammu-Nation guns | Need a valid Weapon Permit (knives and ammo don't) |
+| Police on duty: F6 > Check licenses (or `/licenses`) | See the closest player's licenses, suspend or revoke with a reason (card is taken or reprinted) |
+| Suspended/revoked player at the DMV | **Request reinstatement**; it can't be bought back |
+| Police supervisor (grade 2+): `/licenserequests` | Approve or deny; only supervisors can reinstate |
+
+**City Accountant** (next to City Hall, or the bank's "Investing & advice" button, or `/stocks` to view prices):
+advice from your real numbers (bills, credit, cash, paycheck, spending, investing). **Stock market**: 8 companies,
+prices move every 5 minutes with news events, 1% trade fee; trade at any bank or the Accountant. With `tfc_ai_key`
+set, an **Ask** box sends the question plus the player's numbers to Claude (20 s cooldown, 30 a day per player).
 
 ## Check that phase 8c works (job and business accounts)
 
@@ -497,6 +529,13 @@ Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 
 Server hooks: `shopPurchase(source, shopId, item, count, total, payment)`, `shopSale(source, shopId, item, count, total, account)`.
 Admin: `/shops`.
+
+### Government and finance (QoL)
+
+`exports['tfc-government']`: `HasLicense(src, type)`, `GetLicenses(src)`, `GetLicensesByCid(cid)`.
+Types: `driver, motorcycle, cdl, hazmat, weapon, hunting, fishing, boat, pilot`.
+Hooks: `licenseIssued(src, type)`, `licenseStatusChanged(cid, type, status, by)`.
+`exports['tfc-finance']`: `GetQuote(symbol)`, `GetPortfolio(src)`.
 
 ### Businesses (phase 8c)
 

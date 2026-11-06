@@ -29,6 +29,8 @@ JobsConfig = {
     ---  label        shown on the HUD and in messages
     ---  noDuty       job has no duty toggle (always counts as working)
     ---  payRange     { min, max } a boss may set any rank's pay to (default: DefaultPayRange)
+    ---  public       anyone can sign up at the Government Center (starts at rank 0)
+    ---  description  shown on the Government Center job board
     ---  grades[n]    { label, pay (per paycheck), boss = true lets them use the Boss Menu }
     ---
     ---IMPORTANT: grades here only seed the database the first time a job is seen.
@@ -70,6 +72,8 @@ JobsConfig = {
 
         mechanic = {
             label = 'Mechanic',
+            public = true, -- players can sign up at the Government Center (tfc-government)
+            description = 'Repair and tow vehicles. Bill customers for your work.',
             payRange = { min = 100, max = 800 },
             grades = {
                 [0] = { label = 'Apprentice', pay = 200 },
@@ -81,6 +85,8 @@ JobsConfig = {
 
         taxi = {
             label = 'Downtown Cab Co.',
+            public = true,
+            description = 'Drive people around the city. Bill your fares.',
             payRange = { min = 100, max = 500 },
             grades = {
                 [0] = { label = 'Driver', pay = 150 },

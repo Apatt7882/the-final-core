@@ -277,9 +277,21 @@ local function balancesOf(src)
     return exports[ACC]:GetBalances(src) or {}
 end
 
+---Does the player hold this license? (Always yes when tfc-government isn't running.)
+local function hasLicense(src, id, cache)
+    if not id or GetResourceState('tfc-government') ~= 'started' then return true end
+    if cache and cache[id] ~= nil then return cache[id] end
+    local ok = exports['tfc-government']:HasLicense(src, id) == true
+    if cache then cache[id] = ok end
+    return ok
+end
+
+local LICENSE_LABELS = { weapon = 'Weapon Permit', driver = "Driver's License", hunting = 'Hunting License', fishing = 'Fishing License', boat = 'Boating License', pilot = 'Pilot License' }
+
 local function shopData(src, shop, job)
     local def = Types[shop.type]
     local items, buys, payment = {}, {}, {}
+    local licenses = {}
 
     for _, e in ipairs(def.items or {}) do
         local d = itemDefs[e.name] or {}
@@ -291,6 +303,8 @@ local function shopData(src, shop, job)
             weight = d.weight or 0, price = priceOf(shop, e), max = max or false,
             stock = (max and stock[shop.id] and (stock[shop.id][e.name] or 0)) or false,
             locked = locked, grade = e.grade or false,
+            license = e.license and (LICENSE_LABELS[e.license] or e.license) or false,
+            licenseOk = hasLicense(src, e.license, licenses),
         }
     end
 
@@ -356,6 +370,9 @@ function ShopsSrv.Buy(src, id, name, count, payment, hour)
     local entry = findEntry(def.items, name)
     if not entry then return fail('that is not sold here') end
     if entry.grade and (not job or (job.grade or 0) < entry.grade) then return fail('your rank cannot take that') end
+    if not hasLicense(src, entry.license) then
+        return fail(('you need a %s for that (get one at the DMV)'):format(LICENSE_LABELS[entry.license] or entry.license))
+    end
 
     local n = validCount(count)
     if not n then return fail(('pick an amount from 1 to %d'):format(Cfg.MaxQuantity)) end

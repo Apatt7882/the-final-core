@@ -150,6 +150,20 @@ local function GetSocietyHistory(society, limit)
 end
 
 BankSrv.AddSociety = AddSociety
+
+---Is the player standing at a bank teller?
+exports('IsNearBank', function(src)
+    for _, bank in ipairs(Cfg.Banks) do
+        if distTo(src, bank.coords.x, bank.coords.y, bank.coords.z) <= Cfg.BankDistance + 3.0 then return true end
+    end
+    return false
+end)
+
+exports('GetCreditTerms', function()
+    local last = GetResourceKvpInt('lastInterest') or 0
+    return { rate = Cfg.CreditInterest.rate, everyDays = Cfg.CreditInterest.everyDays, limit = creditLimit(),
+        nextAt = last > 0 and (last + Cfg.CreditInterest.everyDays * 86400) or nil }
+end)
 exports('GetSocietyHistory', GetSocietyHistory)
 exports('GetSociety', GetSociety)
 exports('AddSociety', AddSociety)
@@ -231,6 +245,7 @@ local function openData(src, s)
     d.creditLimit = creditLimit()
     d.interest = interestInfo()
     d.maxTransfer = Cfg.MaxTransfer
+    d.finance = s.kind == 'bank' and GetResourceState('tfc-finance') == 'started'
     if s.kind ~= 'atm' then
         d.history = history(src, 1)
         d.bills = BankSrv.bills(src)

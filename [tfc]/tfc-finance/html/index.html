@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Finance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+        <main class="window" role="dialog" aria-modal="true" aria-labelledby="title">
+            <header class="head">
+                <div>
+                    <p class="brand">City Accountant</p>
+                    <h1 id="title">Your finances</h1>
+                </div>
+                <div class="head-right">
+                    <span class="trade-note" id="trade-note"></span>
+                    <button class="icon-btn" id="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
+            </header>
+            <nav class="tabs" role="tablist">
+                <button class="tab" data-tab="advisor">Advice</button>
+                <button class="tab" data-tab="stocks">Stock market</button>
+                <button class="tab" data-tab="portfolio">My portfolio</button>
+            </nav>
+
+            <!-- Advice -->
+            <section class="body" data-panel="advisor">
+                <div class="cards" id="a-cards"></div>
+                <div class="advice-wrap">
+                    <div>
+                        <h3>My advice for you</h3>
+                        <div id="a-list"></div>
+                    </div>
+                    <aside class="ask" id="a-ask">
+                        <h3>Ask the Accountant</h3>
+                        <textarea id="a-question" maxlength="300" placeholder="e.g. Should I pay off my credit or buy stocks first?"></textarea>
+                        <button class="primary" id="a-send">Ask</button>
+                        <div class="answer hidden" id="a-answer"></div>
+                        <p class="muted small" id="a-left"></p>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- Stocks -->
+            <section class="body hidden" data-panel="stocks">
+                <div class="market">
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>Company</th><th class="num">Price</th><th class="num">24h</th><th>Last 24h</th></tr></thead>
+                            <tbody id="s-rows"></tbody>
+                        </table>
+                    </div>
+                    <aside class="detail" id="s-detail"></aside>
+                </div>
+            </section>
+
+            <!-- Portfolio -->
+            <section class="body hidden" data-panel="portfolio">
+                <div class="cards" id="p-cards"></div>
+                <h3>Holdings</h3>
+                <table class="table">
+                    <thead><tr><th>Company</th><th class="num">Shares</th><th class="num">Avg cost</th><th class="num">Price</th><th class="num">Value</th><th class="num">Gain / loss</th><th class="num">Sell</th></tr></thead>
+                    <tbody id="p-rows"></tbody>
+                </table>
+                <p class="empty hidden" id="p-empty">You don't own any shares yet. Pick a company on the Stock market tab.</p>
+                <h3>Recent trades</h3>
+                <div id="p-trades"></div>
+            </section>
+
+            <p class="msg" id="msg" role="status"></p>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

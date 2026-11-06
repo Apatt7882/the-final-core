@@ -118,6 +118,13 @@ RegisterNUICallback('close', function(_, cb)
     cb({})
 end)
 
+-- "Investing & advice" button: hand over to tfc-finance.
+RegisterNUICallback('finance', function(_, cb)
+    close()
+    TriggerEvent('tfc-finance:client:openAdvisor')
+    cb({})
+end)
+
 RegisterNUICallback('action', function(d, cb)
     cb(TFC.Callback.Await('banking:action', d.action, d.data or {}) or NO_RESPONSE)
 end)

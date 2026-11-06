@@ -91,6 +91,16 @@ end
 
 TFC.OnNet('tfc-admin:client:back', goBack)
 
+-- /coords: your position as vector4(...), ready to paste into a config file.
+TFC.OnNet('tfc-admin:client:coords', function()
+    local ped = PlayerPedId()
+    local c = GetEntityCoords(ped)
+    local text = ('vector4(%.2f, %.2f, %.2f, %.1f)'):format(c.x, c.y, c.z, GetEntityHeading(ped))
+    print('[tfc-admin] ' .. text)
+    TriggerEvent('chat:addMessage', { args = { 'coords', text } })
+    notify(text .. ' (also in F8 and chat)')
+end)
+
 -- Frozen / healed by an admin ------------------------------------------------------------------------
 
 AddStateBagChangeHandler('tfc:frozen', nil, function(bagName, _, value)

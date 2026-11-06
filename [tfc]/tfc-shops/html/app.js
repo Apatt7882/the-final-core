@@ -136,6 +136,7 @@ function cardHtml(item) {
     if (S.mode === 'buy') {
         price = item.price > 0 ? money(item.price) : 'Free';
         if (item.locked) { tag = `<span class="tag lock">Rank ${item.grade}+</span>`; off = true; }
+        else if (item.license && !item.licenseOk) { tag = '<span class="tag lock">Permit</span>'; off = true; }
         else if (item.max !== false) {
             if (item.stock <= 0) { tag = '<span class="tag out">Sold out</span>'; off = true; }
             else tag = `<span class="tag${item.stock <= Math.max(1, Math.floor(item.max / 5)) ? ' low' : ''}">${item.stock} left</span>`;
@@ -204,6 +205,7 @@ function renderPick() {
         if (item.weight) facts.push(['Weight', grams(item.weight)]);
         if (item.max !== false) facts.push(['In stock', `${item.stock} / ${item.max}`]);
         if (item.grade !== false) facts.push(['Rank needed', `${item.grade}+`]);
+        if (item.license) facts.push(['Requires', item.license]);
     } else {
         facts.push(['They pay', `${money(item.price)} each`]);
         facts.push(['You have', String(item.have)]);
@@ -221,6 +223,7 @@ function renderPick() {
     let blocked = '';
     if (S.mode === 'buy') {
         if (item.locked) blocked = `Needs rank ${item.grade} or higher`;
+        else if (item.license && !item.licenseOk) blocked = `Needs a ${item.license} (DMV)`;
         else if (max <= 0) blocked = 'Sold out';
         btn.textContent = total === 0 ? `Take ${S.qty}` : `Buy ${S.qty} for ${money(total)}`;
     } else {

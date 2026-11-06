@@ -26,6 +26,9 @@ Items = {
     phone = { label = 'Phone', weight = 190, stack = false, description = 'A smartphone.' },
     radio = { label = 'Radio', weight = 600, stack = false, description = 'A handheld two-way radio.' },
     id_card = { label = 'ID Card', weight = 10, stack = false, description = 'Government-issued identification.' },
+    drivers_license = { label = "Driver's License", weight = 10, stack = false, description = 'San Andreas driver\'s license. Classes are listed on the card.' },
+    weapon_permit = { label = 'Weapon Permit', weight = 10, stack = false, description = 'Permit to buy and carry firearms.' },
+    license_card = { label = 'License', weight = 10, stack = false, description = 'A state license or permit.' },
     lockpick = {
         label = 'Lockpick', weight = 150, stack = true, maxStack = 10,
         description = 'For locks that are not yours.',

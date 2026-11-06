@@ -56,7 +56,7 @@ function def(name) {
     return state.items[name] || { label: name, weight: 0 };
 }
 
-const META_LABELS = { serial: 'Serial', durability: 'Condition', ammo: 'Loaded', name: 'Name', dob: 'Born', cid: 'Citizen ID', number: 'Number' };
+const META_LABELS = { serial: 'Serial', durability: 'Condition', ammo: 'Loaded', name: 'Name', dob: 'Born', cid: 'Citizen ID', number: 'Number', license: 'License', classes: 'Classes', issued: 'Issued' };
 
 function metaRows(item, d) {
     const m = item.metadata || {};

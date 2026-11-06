@@ -181,6 +181,10 @@ function showPage(page) {
 }
 
 document.querySelectorAll('#b-nav [data-page]').forEach((b) => b.addEventListener('click', () => showPage(b.dataset.page)));
+document.querySelector('#b-nav [data-finance]').addEventListener('click', () => {
+    $('backdrop').classList.add('hidden');
+    nui('finance');
+});
 
 // Overview actions
 async function cashMove(action) {
@@ -242,6 +246,7 @@ function openBank(d) {
     $('b-brand').textContent = billsOnly ? 'Bills' : d.label;
     $('b-title').textContent = billsOnly ? 'Your bills' : `Welcome, ${d.name}`;
     $('b-nav').classList.toggle('hidden', billsOnly);
+    document.querySelector('#b-nav [data-finance]').classList.toggle('hidden', !d.finance);
     $('bank').querySelector('.bank-body').style.gridTemplateColumns = billsOnly ? '1fr' : '';
     $('atm').classList.add('hidden');
     $('bank').classList.remove('hidden');
