@@ -360,9 +360,25 @@ local function getShop(id)
     return shops[math.tointeger(tonumber(id)) or -1]
 end
 
+---An on-duty store clerk can't shop at a 24/7 they're working (any 24/7 if we can't tell which).
+---@return string|nil reason
+local function clerkBusy(src, shop)
+    if shop.type ~= 'general' or GetResourceState('tfc-jobs') ~= 'started' then return nil end
+    local j = exports['tfc-jobs']:GetJob(src)
+    if not j or j.name ~= 'clerk' or j.onDuty ~= true then return nil end
+    local work = GetResourceState('tfc-civjobs') == 'started' and exports['tfc-civjobs']:GetWorkplace(src) or nil
+    if type(work) == 'table' and work.x then
+        local dx, dy = work.x - shop.x, work.y - shop.y
+        if math.sqrt(dx * dx + dy * dy) >= 20.0 then return nil end
+    end
+    return 'you\'re on shift as a clerk; clock out to shop at a 24/7'
+end
+
 function ShopsSrv.Buy(src, id, name, count, payment, hour)
     local shop = getShop(id)
     if not shop then return fail('this shop no longer exists') end
+    local busy = clerkBusy(src, shop)
+    if busy then return fail(busy) end
     local ok, err, job = checkAccess(src, shop, hour)
     if not ok then return fail(err) end
 
@@ -578,6 +594,8 @@ end, { rateLimit = 1000 })
 TFC.Callback.Register('shops:open', function(src, id, hour)
     local shop = getShop(id)
     if not shop then return fail('this shop no longer exists') end
+    local busy = clerkBusy(src, shop)
+    if busy then return fail(busy) end
     local ok, err, job = checkAccess(src, shop, hour)
     if not ok then return fail(err) end
     if not next(itemDefs) then ShopsSrv.RefreshItems() end

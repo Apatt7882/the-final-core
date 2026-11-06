@@ -124,10 +124,20 @@ local function nearestShop()
     local here = GetEntityCoords(PlayerPedId())
     local best, bestDist = nil, Cfg.InteractDistance
     local anyClose = false
+    -- An on-duty store clerk (tfc-civjobs): E is for their work, so no shop prompt at 24/7s near
+    -- where they clocked in (any 24/7 if we don't know where that is).
+    local job = LocalPlayer.state['tfc:job']
+    local clerk = type(job) == 'table' and job.name == 'clerk' and job.onDuty == true
+    local work = clerk and LocalPlayer.state['tfc:workplace'] or nil
     for _, shop in ipairs(shops) do
+        if clerk and shop.type == 'general' and (type(work) ~= 'table' or not work.x
+            or #(vector3(work.x, work.y, work.z) - vector3(shop.x, shop.y, shop.z)) < 20.0) then
+            goto continue
+        end
         local d = #(here - vector3(shop.x, shop.y, shop.z))
         if d < 15.0 then anyClose = true end
         if d < bestDist then best, bestDist = shop, d end
+        ::continue::
     end
     return best, anyClose
 end
