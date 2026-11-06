@@ -14,6 +14,7 @@
                 <div>
                     <p class="brand" id="shop-kicker">Shop</p>
                     <h1 id="shop-title">Store</h1>
+                    <p class="owner hidden" id="shop-owner"></p>
                 </div>
                 <div class="head-right">
                     <div class="wallet" id="wallet"></div>
@@ -30,6 +31,10 @@
 
             <section class="shop-body">
                 <div class="grid-wrap">
+                    <div class="sale-banner hidden" id="sale-banner">
+                        <span id="sale-text">This store is for sale</span>
+                        <button class="secondary small" id="sale-request">Request to buy</button>
+                    </div>
                     <div class="grid" id="grid"></div>
                     <p class="empty hidden" id="grid-empty"></p>
                 </div>

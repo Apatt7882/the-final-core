@@ -291,3 +291,11 @@ select option { background: #1b1e24; }
 
 .toast.good { border-color: rgba(76, 195, 138, 0.5); }
 .toast.bad { border-color: rgba(229, 72, 77, 0.6); }
+
+/* Savings ------------------------------------------------------------------------- */
+
+.sav-move { display: flex; gap: 10px; margin: 16px 0 6px; }
+.sav-move input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 15px; outline: none; }
+.sav-move input:focus { border-color: var(--accent); }
+.amt-pos { color: var(--good); }
+.amt-neg { color: var(--danger); }

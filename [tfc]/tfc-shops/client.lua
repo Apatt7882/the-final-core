@@ -191,6 +191,12 @@ RegisterNUICallback('buy', function(d, cb)
     cb(TFC.Callback.Await('shops:buy', openShop.id, d.name, d.count, d.payment, GetClockHours()) or NO_RESPONSE)
 end)
 
+-- "Request to buy" on a store that's for sale (handled by tfc-business).
+RegisterNUICallback('requestBuy', function(d, cb)
+    if GetResourceState('tfc-business') ~= 'started' then return cb({ ok = false, error = 'businesses are not running' }) end
+    cb(TFC.Callback.Await('business:request', d.business) or NO_RESPONSE)
+end)
+
 RegisterNUICallback('sell', function(d, cb)
     if not openShop then return cb(NO_RESPONSE) end
     cb(TFC.Callback.Await('shops:sell', openShop.id, d.name, d.count, GetClockHours()) or NO_RESPONSE)

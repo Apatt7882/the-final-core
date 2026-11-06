@@ -29,6 +29,7 @@
                 <button class="tab" data-tab="employees">Employees</button>
                 <button class="tab" data-tab="hire">Hire</button>
                 <button class="tab" data-tab="ranks">Ranks &amp; pay</button>
+                <button class="tab" data-tab="savings">Savings</button>
                 <button class="tab" data-tab="activity">Activity</button>
             </nav>
 
@@ -82,6 +83,28 @@
                             <button class="btn btn-primary" type="submit">Add rank</button>
                         </div>
                     </form>
+                </div>
+
+                <!-- Savings -->
+                <div class="panel hidden" data-panel="savings">
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-label">Savings balance</div>
+                            <div class="stat-value" id="sav-balance">$0</div>
+                            <div class="stat-sub" id="sav-who"></div>
+                        </div>
+                    </div>
+                    <div class="sav-move" id="sav-move">
+                        <input id="sav-amount" type="number" min="1" step="1" placeholder="Amount">
+                        <button class="btn btn-ghost" id="sav-deposit">Deposit from my bank</button>
+                        <button class="btn btn-primary" id="sav-withdraw">Withdraw to my bank</button>
+                    </div>
+                    <h2>History</h2>
+                    <table class="table">
+                        <thead><tr><th>When</th><th>What</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead>
+                        <tbody id="sav-body"></tbody>
+                    </table>
+                    <p class="empty hidden" id="sav-empty">No money has come in yet.</p>
                 </div>
 
                 <!-- Activity -->

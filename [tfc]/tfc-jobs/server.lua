@@ -12,6 +12,8 @@
 --   IsOnDuty(src) -> bool                    HasJob(src, job, minGrade?) -> bool
 --   GetPlayersWithJob(job, onDutyOnly?) -> integer[]
 --   GetJobs() -> jobs with their current ranks
+--   RegisterJob(name, def) -> ok, err        (runtime jobs, e.g. businesses; saved)
+--   GetTopGrade(name) -> integer
 -- Server hooks: jobChanged(source, job, oldJob), dutyChanged(source, onDuty, job)
 
 ---Shared by every server file in this resource. Jobs[name].grades is replaced from the
@@ -268,6 +270,8 @@ exports('IsOnDuty', IsOnDuty)
 exports('HasJob', HasJob)
 exports('GetPlayersWithJob', GetPlayersWithJob)
 exports('GetJobs', function() return Jobs end)
+exports('RegisterJob', function(name, def) return JobsSrv.RegisterJob(name, def) end)
+exports('GetTopGrade', function(name) return Jobs[name] and JobsSrv.MaxGrade(name) or nil end)
 
 ---Is this player earning right now? (Duty jobs only pay while on duty.)
 local function isWorking(state)

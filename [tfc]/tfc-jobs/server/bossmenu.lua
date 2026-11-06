@@ -23,7 +23,37 @@ function JobsSrv.Access(src, name)
         boss = isBoss,
         admin = admin,
         grade = isBoss and state.grade or nil,
+        -- Holds the job's highest rank (a business owner).
+        top = state ~= nil and state.name == name and state.grade == JobsSrv.MaxGrade(name),
     }
+end
+
+-- Savings (department / business account in tfc-banking) ---------------------------------------
+-- Businesses: only the owner (highest rank). Departments (police, EMS...): whoever holds the
+-- highest rank anyone currently has; if nobody is Chief, the next rank down. Admins can view.
+
+local function banking()
+    return GetResourceState('tfc-banking') == 'started' and exports['tfc-banking'] or nil
+end
+
+---@return 'full'|'view'|nil
+function JobsSrv.SavingsAccess(src, name, access)
+    if name == JobsConfig.DefaultJob or not banking() then return nil end
+    local state = JobsSrv.Load(src)
+    if state and state.name == name then
+        if Jobs[name].kind == 'business' then
+            if state.grade == JobsSrv.MaxGrade(name) then return 'full' end
+        else
+            local top = math.tointeger(tonumber((MySQL.scalar.await('SELECT MAX(grade) FROM tfc_character_jobs WHERE job = ?', { name }))))
+            if top and state.grade >= top then return 'full' end
+        end
+    end
+    if access and access.admin then return 'view' end
+    return nil
+end
+
+local function savingsWho(name)
+    return Jobs[name].kind == 'business' and 'the owner' or 'the highest-ranking member'
 end
 
 ---An employee by cid (online or offline), only if they work in `name`.
@@ -143,6 +173,7 @@ end
 
 function actions.setpay(src, name, access, data)
     if not access.boss then return false, 'only bosses of this job can change pay' end
+    if Jobs[name].kind == 'business' and not access.top then return false, 'only the owner can change pay' end
     local grade = math.tointeger(tonumber(data.grade))
     local old = grade and JobsSrv.GradeOf(name, grade)
     if not old then return false, 'that rank does not exist' end
@@ -194,6 +225,38 @@ function actions.removerank(src, name, access, data)
     return true
 end
 
+local function playerName(src)
+    local p = TFC.GetPlayer(src)
+    return p and p:GetFullName() or GetPlayerName(src) or tostring(src)
+end
+
+function actions.savings_deposit(src, name, access, data)
+    if JobsSrv.SavingsAccess(src, name, access) ~= 'full' then return false, ('only %s can use the savings'):format(savingsWho(name)) end
+    local n = math.tointeger(tonumber(data.amount))
+    if not n or n < 1 then return false, 'enter an amount' end
+    local reason = ('Deposit to %s savings'):format(Jobs[name].label)
+    if not exports['tfc-accounts']:RemoveMoney(src, 'bank', n, reason) then return false, 'not enough in your bank' end
+    if not banking():AddSociety(name, n, ('Deposit by %s'):format(playerName(src))) then
+        exports['tfc-accounts']:AddMoney(src, 'bank', n, 'Refund: ' .. reason)
+        return false, 'the deposit failed; you were refunded'
+    end
+    JobsSrv.LogAction(name, src, 'deposit', nil, ('$%d'):format(n))
+    return true
+end
+
+function actions.savings_withdraw(src, name, access, data)
+    if JobsSrv.SavingsAccess(src, name, access) ~= 'full' then return false, ('only %s can use the savings'):format(savingsWho(name)) end
+    local n = math.tointeger(tonumber(data.amount))
+    if not n or n < 1 then return false, 'enter an amount' end
+    if not banking():RemoveSociety(name, n, ('Withdrawal by %s'):format(playerName(src))) then return false, 'not enough in the savings' end
+    if not exports['tfc-accounts']:AddMoney(src, 'bank', n, ('Withdrawal from %s savings'):format(Jobs[name].label)) then
+        banking():AddSociety(name, n, 'Refund: failed withdrawal')
+        return false, 'the withdrawal failed'
+    end
+    JobsSrv.LogAction(name, src, 'withdraw', nil, ('$%d'):format(n))
+    return true
+end
+
 ---Run a Boss Menu action. Returns ok, err.
 function JobsSrv.Action(src, name, action, data)
     if not Jobs[name] then return false, 'that job does not exist' end
@@ -218,6 +281,13 @@ local function jobList(src)
     end
     table.sort(list, function(a, b) return a.label < b.label end)
     return list, state and state.name
+end
+
+local function savingsData(src, name, access)
+    local level = JobsSrv.SavingsAccess(src, name, access)
+    if not level then return nil end
+    local b = banking()
+    return { access = level, balance = b:GetSociety(name), history = b:GetSocietyHistory(name, 25), who = savingsWho(name) }
 end
 
 function JobsSrv.MenuData(src, name)
@@ -254,6 +324,9 @@ function JobsSrv.MenuData(src, name)
         stats = { total = #employees, online = online, onDuty = onDuty, payroll = JobsSrv.GetPayroll(name) },
         log = JobsSrv.GetLog(name),
         maxRanks = Cfg.MaxRanks,
+        savings = savingsData(src, name, access),
+        business = job.kind == 'business',
+        top = access.top,
     }
 end
 

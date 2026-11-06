@@ -179,6 +179,31 @@ function ShopsSrv.Broadcast()
     TriggerClientEvent('tfc-shops:client:shops', -1, ShopsSrv.List())
 end
 
+-- Owned stores (tfc-business) --------------------------------------------------------------------
+-- tfc-business tells us which shops are businesses. An OWNED store sells only what's on its
+-- shelves (restocked by the owner), at the owner's prices, and buys from players with the
+-- store's savings. Unowned stores (even if for sale) work like any other shop.
+
+---@type table<integer, { business: integer, job: string, owned: boolean, ownerName?: string, forSale: boolean, price?: integer, prices: table<string, integer>, shelf: integer }>
+local stores = {}
+
+local function storeOf(shop)
+    local s = stores[shop.id]
+    return s and s.owned and s or nil
+end
+
+local function priceOf(shop, entry)
+    local s = storeOf(shop)
+    return s and s.prices[entry.name] or entry.price
+end
+
+---Max shelf stock for an entry (nil = unlimited).
+local function maxOf(shop, entry)
+    local s = storeOf(shop)
+    if s then return s.shelf end
+    return entry.stock
+end
+
 -- Stock --------------------------------------------------------------------------------------
 
 local function saveStock(id, name)
@@ -198,6 +223,9 @@ function ShopsSrv.InitStock(shop, stored)
             local n = stored and stored[e.name]
             if n == nil then n = e.stock end
             stock[shop.id][e.name] = math.max(0, math.min(e.stock, n))
+        elseif stored and stored[e.name] then
+            -- Shelf stock of an owned store (tfc-business); unused while the store is unowned.
+            stock[shop.id][e.name] = math.max(0, stored[e.name])
         end
     end
 end
@@ -228,7 +256,7 @@ local function restockTick()
     for id, shop in pairs(shops) do
         local def = Types[shop.type]
         local r = def and def.restock
-        if r and stock[id] and now - (lastRestock[id] or now) >= r.minutes * 60 then
+        if r and stock[id] and not storeOf(shop) and now - (lastRestock[id] or now) >= r.minutes * 60 then
             lastRestock[id] = now
             for _, e in ipairs(def.items or {}) do
                 local cur = stock[id][e.name]
@@ -257,10 +285,11 @@ local function shopData(src, shop, job)
         local d = itemDefs[e.name] or {}
         local locked = false
         if e.grade and (not job or (job.grade or 0) < e.grade) then locked = true end
+        local max = maxOf(shop, e)
         items[#items + 1] = {
             name = e.name, label = itemLabel(e.name), description = d.description or '',
-            weight = d.weight or 0, price = e.price, max = e.stock or false,
-            stock = (e.stock and stock[shop.id] and stock[shop.id][e.name]) or false,
+            weight = d.weight or 0, price = priceOf(shop, e), max = max or false,
+            stock = (max and stock[shop.id] and (stock[shop.id][e.name] or 0)) or false,
             locked = locked, grade = e.grade or false,
         }
     end
@@ -277,7 +306,10 @@ local function shopData(src, shop, job)
     end
 
     local sellTo = def.sellTo or 'cash'
+    local st = stores[shop.id]
     return {
+        store = st and { business = st.business, owned = st.owned, ownerName = st.ownerName or false,
+            forSale = st.forSale, price = st.price or false } or false,
         id = shop.id,
         type = shop.type,
         label = shop.label or def.label,
@@ -328,19 +360,22 @@ function ShopsSrv.Buy(src, id, name, count, payment, hour)
     local n = validCount(count)
     if not n then return fail(('pick an amount from 1 to %d'):format(Cfg.MaxQuantity)) end
 
-    local total = entry.price * n
+    local price = priceOf(shop, entry)
+    local total = price * n
     if total > 0 and not contains(def.payment, payment) then return fail('this shop does not take that payment') end
 
     -- Reserve limited stock before anything waits, so two buyers can't take the last one.
-    local limited = entry.stock ~= nil
+    local max = maxOf(shop, entry)
+    local limited = max ~= nil
     if limited then
-        local left = stock[shop.id] and stock[shop.id][name] or 0
+        stock[shop.id] = stock[shop.id] or {}
+        local left = stock[shop.id][name] or 0
         if left < n then return fail(left == 0 and 'sold out' or ('only %d left'):format(left)) end
         stock[shop.id][name] = left - n
     end
     local function giveBackStock(k)
         if limited and k > 0 and stock[shop.id] then
-            stock[shop.id][name] = math.min(entry.stock, stock[shop.id][name] + k)
+            stock[shop.id][name] = math.min(max, (stock[shop.id][name] or 0) + k)
         end
     end
 
@@ -376,14 +411,14 @@ function ShopsSrv.Buy(src, id, name, count, payment, hour)
     -- Anything we couldn't hand over is refunded and goes back on the shelf.
     if delivered < n then
         giveBackStock(n - delivered)
-        local refund = entry.price * (n - delivered)
+        local refund = price * (n - delivered)
         if refund > 0 then exports[ACC]:AddMoney(src, payment, refund, 'Refund: ' .. reason) end
     end
     if limited then saveStock(shop.id, name) end
     if delivered == 0 then return fail('you can\'t carry that much') end
 
-    TFC.Emit('shopPurchase', src, shop.id, name, delivered, entry.price * delivered, payment)
-    local msg = total > 0 and ('Bought %dx %s for $%d'):format(delivered, itemLabel(name), entry.price * delivered)
+    TFC.Emit('shopPurchase', src, shop.id, name, delivered, price * delivered, payment)
+    local msg = total > 0 and ('Bought %dx %s for $%d'):format(delivered, itemLabel(name), price * delivered)
         or ('Took %dx %s'):format(delivered, itemLabel(name))
     return { ok = true, message = msg, shop = shopData(src, shop, job) }
 end
@@ -409,25 +444,109 @@ function ShopsSrv.Sell(src, id, name, count, hour)
     local total = entry.price * n
     local account = def.sellTo or 'cash'
 
-    if not exports[INV]:RemoveItem(src, name, n, nil, nil, reason) then return fail('could not take the items') end
+    -- An owned store pays sellers out of its own savings.
+    local owned = storeOf(shop)
+    if owned and total > 0 then
+        if GetResourceState('tfc-banking') ~= 'started'
+            or not exports['tfc-banking']:RemoveSociety(owned.job, total, ('Bought %dx %s from %s'):format(n, itemLabel(name), GetPlayerName(src) or src)) then
+            return fail('the store can\'t afford to buy that right now')
+        end
+    end
+    local function refundStore()
+        if owned and total > 0 then exports['tfc-banking']:AddSociety(owned.job, total, 'Refund: purchase from a player failed') end
+    end
+
+    if not exports[INV]:RemoveItem(src, name, n, nil, nil, reason) then
+        refundStore()
+        return fail('could not take the items')
+    end
     if total > 0 then
         local paid, payErr = exports[ACC]:AddMoney(src, account, total, reason)
         if not paid then
             exports[INV]:AddItem(src, name, n, nil, nil, 'Returned: ' .. reason)
+            refundStore()
             return fail(payErr or 'payment failed')
         end
     end
 
     -- If the shop also sells this item with limited stock, what you sold goes on its shelf.
     local sold = findEntry(def.items, name)
-    if sold and sold.stock and stock[shop.id] and stock[shop.id][name] then
-        stock[shop.id][name] = math.min(sold.stock, stock[shop.id][name] + n)
+    local soldMax = sold and maxOf(shop, sold)
+    if soldMax and stock[shop.id] then
+        stock[shop.id][name] = math.min(soldMax, (stock[shop.id][name] or 0) + n)
         saveStock(shop.id, name)
     end
 
     TFC.Emit('shopSale', src, shop.id, name, n, total, account)
     return { ok = true, message = ('Sold %dx %s for $%d'):format(n, itemLabel(name), total), shop = shopData(src, shop, job) }
 end
+
+-- For tfc-business -------------------------------------------------------------------------------
+
+---Tell this resource a shop is a business (or nil to make it a normal shop again).
+exports('SetStoreInfo', function(shopId, info)
+    shopId = math.tointeger(tonumber(shopId))
+    if not shopId then return false end
+    if type(info) ~= 'table' then stores[shopId] = nil return true end
+    local prices = {}
+    for k, v in pairs(info.prices or {}) do prices[k] = math.tointeger(tonumber(v)) end
+    stores[shopId] = {
+        business = info.business, job = info.job, owned = info.owned == true, ownerName = info.ownerName,
+        forSale = info.forSale == true, price = info.price, prices = prices, shelf = math.tointeger(tonumber(info.shelf)) or 100,
+    }
+    return true
+end)
+
+---Fill every shelf of a shop to `count` (used when a store gets a new owner).
+exports('ResetStoreStock', function(shopId, count)
+    local shop = shops[math.tointeger(tonumber(shopId)) or -1]
+    local def = shop and Types[shop.type]
+    if not def then return false end
+    stock[shop.id] = stock[shop.id] or {}
+    for _, e in ipairs(def.items or {}) do
+        stock[shop.id][e.name] = math.max(0, math.tointeger(count) or 0)
+        saveStock(shop.id, e.name)
+    end
+    return true
+end)
+
+---Add stock to an owned store's shelf. Returns how many were actually added (shelf limit).
+exports('AddStock', function(shopId, name, count)
+    local shop = shops[math.tointeger(tonumber(shopId)) or -1]
+    local s = shop and storeOf(shop)
+    local def = shop and Types[shop.type]
+    count = math.tointeger(tonumber(count))
+    if not s or not def or not count or count < 1 or not findEntry(def.items, name) then return 0 end
+    stock[shop.id] = stock[shop.id] or {}
+    local cur = stock[shop.id][name] or 0
+    local add = math.min(count, s.shelf - cur)
+    if add <= 0 then return 0 end
+    stock[shop.id][name] = cur + add
+    saveStock(shop.id, name)
+    return add
+end)
+
+---What a shop sells, with base price, current price and shelf stock.
+exports('GetStoreItems', function(shopId)
+    local shop = shops[math.tointeger(tonumber(shopId)) or -1]
+    local def = shop and Types[shop.type]
+    if not def then return nil end
+    local list = {}
+    for _, e in ipairs(def.items or {}) do
+        local max = maxOf(shop, e)
+        list[#list + 1] = {
+            name = e.name, label = itemLabel(e.name), basePrice = e.price, price = priceOf(shop, e),
+            stock = max and ((stock[shop.id] or {})[e.name] or 0) or false, max = max or false,
+        }
+    end
+    return list
+end)
+
+exports('GetShopTypes', function()
+    local list = {}
+    for name, def in pairs(Types) do list[name] = { label = def.label } end
+    return list
+end)
 
 -- Callbacks ----------------------------------------------------------------------------------
 
@@ -552,4 +671,5 @@ end)
 exports('RestockShop', RestockShop)
 
 ShopsSrv.PublicShop = publicShop
+ShopsSrv.stores = stores
 ShopsSrv.CheckAccess = checkAccess

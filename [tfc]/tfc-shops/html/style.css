@@ -392,3 +392,9 @@ select option { background: #1a1d22; }
 .checkout > *, .pick > *, .form-col > * { flex-shrink: 0; }
 .table th.num { text-align: right; }
 .form-actions.edit button { white-space: nowrap; font-size: 14px; padding: 0 10px; }
+
+/* Business: owner line and for-sale banner ----------------------------------------- */
+
+.owner { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.sale-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; padding: 10px 14px; border: 1px solid rgba(232, 163, 61, 0.35); border-radius: var(--radius); background: var(--accent-soft); font-size: 14px; }
+.sale-banner strong { color: var(--accent); }

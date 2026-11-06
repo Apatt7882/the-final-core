@@ -14,6 +14,39 @@ local SCHEMA = [[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ]]
 
+-- Jobs created at runtime by other resources (e.g. tfc-business), kept so they survive restarts.
+local CUSTOM = [[
+    CREATE TABLE IF NOT EXISTS `tfc_custom_jobs` (
+        `name`    VARCHAR(32) NOT NULL,
+        `label`   VARCHAR(64) NOT NULL,
+        `kind`    VARCHAR(16) NOT NULL DEFAULT 'business',
+        `ref`     INT         NULL,
+        `pay_min` INT         NOT NULL DEFAULT 0,
+        `pay_max` INT         NOT NULL DEFAULT 1000,
+        `grades`  LONGTEXT    NULL,
+        PRIMARY KEY (`name`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+]]
+
+---Put a custom job (database row) into Jobs.
+local function addCustom(row)
+    local grades = {}
+    for k, v in pairs(type(row.grades) == 'string' and json.decode(row.grades) or {}) do
+        local g = math.tointeger(tonumber(k))
+        if g then grades[g] = { label = v.label, pay = math.tointeger(tonumber(v.pay)) or 0, boss = v.boss == true } end
+    end
+    if not grades[0] then grades[0] = { label = 'Employee', pay = 0 } end
+    local job = Jobs[row.name] or {}
+    Jobs[row.name] = job
+    job.label = row.label
+    job.kind = row.kind
+    job.ref = math.tointeger(row.ref)
+    job.custom = true
+    job.payRange = { min = math.tointeger(row.pay_min) or 0, max = math.tointeger(row.pay_max) or 1000 }
+    job.configGrades = grades
+    job.grades = job.grades or grades
+end
+
 local function seed(name)
     local queries = {}
     for grade, def in pairs(JobsConfig.Jobs[name].grades) do
@@ -40,6 +73,10 @@ end
 ---Create the table, seed any job with no ranks yet, and load every job's ranks.
 function JobsSrv.LoadRanks()
     MySQL.query.await(SCHEMA)
+    MySQL.query.await(CUSTOM)
+    for _, row in ipairs(MySQL.query.await('SELECT name, label, kind, ref, pay_min, pay_max, grades FROM tfc_custom_jobs') or {}) do
+        if not Jobs[row.name] or Jobs[row.name].custom then addCustom(row) end
+    end
 
     -- Remember the config's ranks so `resetranks` can restore them.
     for _, job in pairs(Jobs) do
@@ -68,6 +105,37 @@ local function validLabel(label)
     label = label:match('^%s*(.-)%s*$')
     if #label < 1 or #label > 48 then return nil end
     return label
+end
+
+---Create (or update the label / pay range of) a job at runtime. Saved, so it survives restarts.
+---@param def { label: string, kind?: string, ref?: integer, payRange?: { min: integer, max: integer }, grades: table<integer, { label: string, pay: integer, boss?: boolean }> }
+---@return boolean ok, string|nil err
+function JobsSrv.RegisterJob(name, def)
+    if type(name) ~= 'string' or not name:match('^[%w_]+$') or #name > 32 then return false, 'invalid job name' end
+    if Jobs[name] and not Jobs[name].custom then return false, 'a config job already uses that name' end
+    if type(def) ~= 'table' then return false, 'invalid job' end
+    local label = validLabel(def.label)
+    if not label then return false, 'the job needs a name (1-48 characters)' end
+    local range = def.payRange or JobsConfig.DefaultPayRange
+
+    local grades = {}
+    for g, r in pairs(def.grades or {}) do
+        grades[tostring(g)] = { label = r.label, pay = r.pay or 0, boss = r.boss == true }
+    end
+    local row = {
+        name = name, label = label, kind = def.kind or 'business', ref = def.ref,
+        pay_min = range.min, pay_max = range.max, grades = json.encode(grades),
+    }
+    MySQL.update.await([[
+        INSERT INTO tfc_custom_jobs (name, label, kind, ref, pay_min, pay_max, grades) VALUES (?, ?, ?, NULLIF(?, -1), ?, ?, ?)
+        ON DUPLICATE KEY UPDATE label = VALUES(label), kind = VALUES(kind), ref = VALUES(ref), pay_min = VALUES(pay_min), pay_max = VALUES(pay_max)
+    ]], { row.name, row.label, row.kind, row.ref or -1, row.pay_min, row.pay_max, row.grades })
+
+    addCustom(row)
+    local count = MySQL.scalar.await('SELECT COUNT(*) FROM tfc_job_grades WHERE job = ?', { name }) or 0
+    if tonumber(count) == 0 then seed(name) end
+    after(name)
+    return true
 end
 
 ---@return boolean ok, string|nil err

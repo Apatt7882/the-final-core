@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Business</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="backdrop" class="hidden">
+
+        <!-- Store manager (owners and managers) -->
+        <main class="window hidden" id="biz" role="dialog" aria-modal="true" aria-labelledby="biz-title">
+            <header class="head">
+                <div>
+                    <p class="brand" id="biz-role">Business</p>
+                    <h1 id="biz-title">Store</h1>
+                </div>
+                <div class="head-right">
+                    <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
+            </header>
+            <div class="cards" id="biz-cards"></div>
+            <section class="biz-body">
+                <div class="col">
+                    <div class="col-head">
+                        <h2>Stock &amp; prices</h2>
+                        <span class="muted" id="biz-hint"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>Item</th><th>On the shelf</th><th>Price</th><th class="num">Restock</th></tr></thead>
+                            <tbody id="biz-items"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <aside class="side">
+                    <h2>Recent sales</h2>
+                    <div id="biz-sales"></div>
+                </aside>
+            </section>
+            <p class="msg" id="biz-msg" role="status"></p>
+        </main>
+
+        <!-- Admin: businesses -->
+        <main class="window hidden" id="adm" role="dialog" aria-modal="true" aria-labelledby="adm-title">
+            <header class="head">
+                <div>
+                    <p class="brand">Admin · Businesses</p>
+                    <h1 id="adm-title">Businesses</h1>
+                </div>
+                <div class="head-right">
+                    <span class="badge" id="adm-count"></span>
+                    <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
+            </header>
+            <section class="adm-body">
+                <div class="col">
+                    <div class="requests hidden" id="adm-requests"></div>
+                    <div class="toolbar">
+                        <input id="adm-search" placeholder="Search by store, owner or #" autocomplete="off">
+                        <select id="adm-filter" aria-label="Show">
+                            <option value="all">All stores</option>
+                            <option value="biz">Businesses</option>
+                            <option value="owned">Owned</option>
+                            <option value="sale">For sale</option>
+                            <option value="none">Not a business yet</option>
+                        </select>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead><tr><th>#</th><th>Store</th><th>Owner</th><th>Status</th><th class="num">Savings</th></tr></thead>
+                            <tbody id="adm-rows"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <aside class="side" id="adm-side">
+                    <div class="side-empty" id="adm-none">Select a store</div>
+                    <div class="hidden" id="adm-detail"></div>
+                </aside>
+            </section>
+            <p class="msg" id="adm-msg" role="status"></p>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

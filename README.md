@@ -6,7 +6,7 @@ A modular, performance-first roleplay framework for FiveM, written in Lua 5.4.
 - **Modules** (`tfc-multichar`, `tfc-accounts`, `tfc-jobs`, `tfc-inventory`, ...) are optional resources that register with the core.
 - Modules may use **ox_lib v3.41.0**, always through TFC wrappers so it can be swapped later.
 
-Status: **phase 8b (banking and billing)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
+Status: **phase 8c (job and business accounts)**. Phases 1-4 are done; phase 5 (ESX/QB bridges) is on hold. See the design doc for the full plan.
 
 ## Layout
 
@@ -29,6 +29,7 @@ Status: **phase 8b (banking and billing)**. Phases 1-4 are done; phase 5 (ESX/QB
   tfc-hud/            -- date/time, money, job, location and who's-on HUD (NUI)
   tfc-world/          -- synced time and weather, blackout, holiday snow
   tfc-banking/        -- banks, ATMs, transfers, bills, credit, department accounts (NUI)
+  tfc-business/       -- player-owned stores: owners, staff, sales split, stock, prices (NUI)
   tfc-jobs/           -- jobs, ranks, duty, paychecks, Boss Menu (NUI)
   tfc-inventory/      -- slot + weight inventory, hotbar, usable items, cash item (NUI)
   tfc-shops/          -- stores, dealers, armories; buy/sell, stock, admin shop manager (NUI)
@@ -55,6 +56,7 @@ Status: **phase 8b (banking and billing)**. Phases 1-4 are done; phase 5 (ESX/QB
    ensure tfc-jobs
    ensure tfc-banking
    ensure tfc-shops
+   ensure tfc-business
    ensure tfc-medical
    ensure tfc-police
    ensure tfc-admin
@@ -83,6 +85,33 @@ Status: **phase 8b (banking and billing)**. Phases 1-4 are done; phase 5 (ESX/QB
 
 All of them can be rebound in GTA Settings > Key Bindings > FiveM. Inventory and job menu use new binding names, so
 anyone who had F2 bound to the old inventory gets Tab automatically.
+
+## Check that phase 8c works (job and business accounts)
+
+Ensure `tfc-business` after `tfc-shops` and `tfc-banking`. Tables are created automatically.
+
+**Paychecks** still come from the government for every job, including business staff.
+
+**Department savings (police, EMS, any job):** Boss Menu > **Savings**. Fines, police/EMS bills and early hospital
+bills land here. Only the member holding the department's highest occupied rank can deposit or withdraw (if nobody is
+Chief, the Captain); admins can view.
+
+**Businesses** (`tfc-business/config.lua`): 24/7 Stores, Ammu-Nation and pawn shops can become businesses.
+
+| Do | Expect |
+| --- | --- |
+| Admin: `/businesses` | Every ownable store: owner, status, savings; purchase requests at the top |
+| Pick a store > name it > Create | It becomes a business with its own job (Cashier, Shift Lead, Manager, Owner) |
+| Set owner: player ID or CID | They become Owner; shelves start with 10 of everything; the shop shows "Owned by ..." |
+| List for sale with a price | The shop window shows "For sale: $X" with **Request to buy** |
+| Player requests, admin Approves | Price taken from their bank (they must be in the city); they become the owner |
+| Owner/Manager: `/bossmenu` | Hire, fire, promote (managers below their rank). Only the **owner** changes pay and uses **Savings** |
+| Owner/Manager: `/business` (or F6 > Manage store) | Stock and prices, sales today/7 days, staff on duty, recent sales |
+| Restock | Costs 50% of the base price per item from the store savings; shelves hold up to 100 |
+| Owner sets prices | 80% to 200% of the base price |
+| Someone buys at an owned store | 0 staff: all to savings. 1 or 2 staff on duty within 50 m: 25% each. 3+: they split 50%. Rest to savings. The buyer never earns from their own purchase |
+| Owned store sold out | "Sold out" until restocked |
+| Remove owner | The store goes back to a normal shop (unlimited stock, normal prices) |
 
 ## Check that phase 8b works (banking and billing)
 
@@ -468,6 +497,14 @@ Admin: `/giveitem`, `/removeitem`, `/clearinventory`.
 
 Server hooks: `shopPurchase(source, shopId, item, count, total, payment)`, `shopSale(source, shopId, item, count, total, account)`.
 Admin: `/shops`.
+
+### Businesses (phase 8c)
+
+`exports['tfc-business']`: `GetBusiness(id)`, `GetBusinessByShop(shopId)`, `GetBusinessByJob(job)`.
+Hooks: `businessOwnerChanged(id, cid)`, `businessSale(id, total, toStaff, toSavings)`.
+`tfc-jobs` adds `RegisterJob(name, def)` (runtime jobs, saved) and `GetTopGrade(name)`.
+`tfc-shops` adds `SetStoreInfo`, `ResetStoreStock`, `AddStock`, `GetStoreItems`, `GetShopTypes`.
+`tfc-banking` adds `GetSocietyHistory(name, limit)`.
 
 ### Banking (phase 8b, `exports['tfc-banking']`, server)
 

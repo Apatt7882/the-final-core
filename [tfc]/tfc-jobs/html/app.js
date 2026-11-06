@@ -192,7 +192,9 @@ async function loadNearby() {
 function renderRanks() {
     const range = data.payRange;
     const hints = [];
-    if (isBoss()) hints.push(`Bosses set pay from ${money(range.min)} to ${money(range.max)} per check (every ${data.paycheckMinutes} min).`);
+    const canPay = isBoss() && (!data.business || data.top);
+    if (canPay) hints.push(`Set pay from ${money(range.min)} to ${money(range.max)} per check (paid by the government every ${data.paycheckMinutes} min).`);
+    else if (isBoss() && data.business) hints.push('Only the owner can change pay.');
     if (isAdmin()) hints.push('Admins can rename, add and remove ranks, and choose which ranks are bosses. Ranks with people in them cannot be removed.');
     $('ranks-hint').textContent = hints.join(' ');
 
@@ -201,7 +203,7 @@ function renderRanks() {
         const name = isAdmin()
             ? `<input class="rank-input" value="${esc(r.label)}" maxlength="48" data-act="rename" data-grade="${r.grade}">`
             : `${esc(r.label)}`;
-        const pay = isBoss()
+        const pay = canPay
             ? `<input class="pay-input" type="number" min="${range.min}" max="${range.max}" step="1" value="${r.pay}" data-act="pay" data-grade="${r.grade}">`
             : money(r.pay);
         const boss = isAdmin() && !data.job.isDefault
@@ -247,12 +249,28 @@ function renderLog() {
     </li>`).join('');
 }
 
+function renderSavings() {
+    const sv = data.savings;
+    document.querySelector('.tab[data-tab="savings"]').classList.toggle('hidden', !sv);
+    if (!sv) { if (tab === 'savings') setTab('overview'); return; }
+    $('sav-balance').textContent = money(sv.balance);
+    $('sav-who').textContent = sv.access === 'full' ? 'You can deposit and withdraw' : `View only. Only ${sv.who} can move money.`;
+    $('sav-move').classList.toggle('hidden', sv.access !== 'full');
+    const rows = sv.history || [];
+    $('sav-empty').classList.toggle('hidden', rows.length > 0);
+    $('sav-body').innerHTML = rows.map((r) => `<tr>
+        <td class="muted">${ago(r.at)}</td><td>${esc(r.reason)}</td>
+        <td class="num ${r.amount < 0 ? 'amt-neg' : 'amt-pos'}">${r.amount < 0 ? '-' : '+'}${money(Math.abs(r.amount))}</td>
+        <td class="num">${money(r.balance)}</td></tr>`).join('');
+}
+
 function render() {
     renderHeader();
     renderOverview();
     renderEmployees();
     renderRanks();
     renderLog();
+    renderSavings();
     if (tab === 'hire') renderHire();
 }
 
@@ -364,6 +382,14 @@ $('ranks-body').addEventListener('click', async (e) => {
     await act('removerank', { grade }, 'Rank removed');
 });
 
+async function savingsMove(action, verb) {
+    const amount = Math.floor(Number($('sav-amount').value));
+    if (!amount || amount < 1) return toast('enter an amount', false);
+    if (await act(action, { amount }, `${verb} ${money(amount)}`)) $('sav-amount').value = '';
+}
+$('sav-deposit').addEventListener('click', () => savingsMove('savings_deposit', 'Deposited'));
+$('sav-withdraw').addEventListener('click', () => savingsMove('savings_withdraw', 'Withdrew'));
+
 $('add-rank').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -407,6 +433,11 @@ const sample = {
         { cid: 'NPF8KXN4', name: 'Lee Park', grade: 0, online: false, onDuty: false, hoursWeek: 0.0 },
     ],
     stats: { total: 17, online: 9, onDuty: 6, payroll: { today: 18450, week: 96300 } },
+    savings: { access: 'full', balance: 48250, who: 'the highest-ranking member', history: [
+        { amount: 300, balance: 48250, reason: 'Bill #12 paid by Jamie Cole: Speeding', at: now - 600 },
+        { amount: 500, balance: 47950, reason: 'Fine: Lee Park (Reckless driving)', at: now - 7200 },
+        { amount: -2000, balance: 47450, reason: 'Withdrawal by Dev Tester', at: now - 86400 },
+    ] },
     log: [
         { actor: 'Dev Tester (Andy)', action: 'promote', target: 'Jamie Cole', details: 'Cadet -> Officer', at: now - 300 },
         { actor: 'Dev Tester (Andy)', action: 'setpay', target: null, details: 'Officer: $350 -> $400', at: now - 5400 },

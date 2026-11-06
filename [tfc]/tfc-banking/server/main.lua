@@ -4,6 +4,7 @@
 -- Exports (server):
 --   GetSociety(name) -> balance             AddSociety(name, amount, reason) -> ok, balance
 --   RemoveSociety(name, amount, reason) -> ok, balance
+--   GetSocietyHistory(name, limit?) -> { amount, balance, reason, at }[]
 -- Server hooks: societyChanged(name, balance, delta, reason)
 
 local Cfg = BankingConfig
@@ -138,7 +139,18 @@ local function RemoveSociety(society, amount, reason)
     return changeSociety(society, -n, reason or '')
 end
 
+---Newest first: { amount, balance, reason, at }
+local function GetSocietyHistory(society, limit)
+    local rows = MySQL.query.await('SELECT amount, balance, reason, UNIX_TIMESTAMP(created_at) AS at FROM tfc_society_transactions WHERE name = ? ORDER BY id DESC LIMIT ?',
+        { society, math.min(100, math.tointeger(tonumber(limit)) or 20) }) or {}
+    for _, r in ipairs(rows) do
+        r.amount, r.balance, r.at = math.tointeger(r.amount), math.tointeger(r.balance), math.tointeger(r.at)
+    end
+    return rows
+end
+
 BankSrv.AddSociety = AddSociety
+exports('GetSocietyHistory', GetSocietyHistory)
 exports('GetSociety', GetSociety)
 exports('AddSociety', AddSociety)
 exports('RemoveSociety', RemoveSociety)

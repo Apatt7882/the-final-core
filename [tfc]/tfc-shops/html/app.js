@@ -64,12 +64,34 @@ function openShop(shop, imagePath) {
     $('shop-kicker').textContent = KICKERS[shop.type] || 'Shop';
     $('shop-title').textContent = shop.label;
     $('shop-tabs').classList.toggle('hidden', !(shop.items.length && shop.buys.length));
+    renderStore();
 
     $('admin').classList.add('hidden');
     $('shop').classList.remove('hidden');
     $('backdrop').classList.remove('hidden');
     renderShop();
 }
+
+// Business info: owner line, and a "for sale" banner with a purchase request button.
+function renderStore() {
+    const st = S.shop.store;
+    $('shop-owner').classList.toggle('hidden', !(st && st.owned && st.ownerName));
+    if (st && st.ownerName) $('shop-owner').textContent = `Owned by ${st.ownerName}`;
+    const sale = st && st.forSale;
+    $('sale-banner').classList.toggle('hidden', !sale);
+    if (sale) $('sale-text').innerHTML = `This store is for sale: <strong>${money(st.price)}</strong>`;
+    $('sale-request').classList.remove('hidden');
+}
+
+$('sale-request').addEventListener('click', async () => {
+    const st = S.shop && S.shop.store;
+    if (!st) return;
+    $('sale-request').disabled = true;
+    const r = await nui('requestBuy', { business: st.business });
+    $('sale-request').disabled = false;
+    $('sale-text').textContent = r && r.ok ? r.message : `Couldn't request: ${(r && r.error) || 'something went wrong'}`;
+    if (r && r.ok) $('sale-request').classList.add('hidden');
+});
 
 function list() {
     return S.mode === 'buy' ? S.shop.items : S.shop.buys;
